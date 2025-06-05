@@ -24,7 +24,7 @@ type Message = {
   sender: {
     id: string;
     name: string;
-    avatar?: string;
+    avatar?: string | null;
   };
   timestamp: Date;
   isCurrentUser: boolean;
@@ -33,6 +33,27 @@ type Message = {
     url: string;
     name?: string;
   }>;
+};
+
+type ChatMessage = {
+  id: string;
+  content: string;
+  sent_at: string;
+  sender_user_id: string;
+  sender_role: 'student' | 'teacher';
+  attachment_info: {
+    type: 'image' | 'pdf';
+    url: string;
+    name?: string;
+  } | null;
+  students: {
+    full_name: string;
+    avatar_url: string | null;
+  } | null;
+  teachers: {
+    full_name: string;
+    avatar_url: string | null;
+  } | null;
 };
 
 type ChatRoomProps = {
@@ -73,17 +94,18 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           sender_user_id,
           sender_role,
           attachment_info,
-          students!chat_messages_sender_user_id_fkey (
+          students:students!chat_messages_sender_user_id_fkey (
             full_name,
             avatar_url
           ),
-          teachers!chat_messages_sender_user_id_fkey (
+          teachers:teachers!chat_messages_sender_user_id_fkey (
             full_name,
             avatar_url
           )
         `)
         .eq('chat_group_id', chatGroupId)
-        .order('sent_at', { ascending: true });
+        .order('sent_at', { ascending: true })
+        .returns<ChatMessage[]>();
 
       if (queryError) throw queryError;
 
