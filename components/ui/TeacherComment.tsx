@@ -1,91 +1,49 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { MessageCircle } from 'lucide-react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+} from 'react-native';
 
-interface TeacherCommentProps {
-  comment: string | null;
-  onReadMore?: () => void;
+export interface TeacherCommentProps {
+  content: string;
+  createdAt: string;
 }
 
-export default function TeacherComment({ comment, onReadMore }: TeacherCommentProps) {
-  const [expanded, setExpanded] = React.useState(false);
-  
-  // If no comment exists
-  if (!comment) {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <MessageCircle size={18} color="#3B82F6" />
-          <Text style={styles.title}>せんせいからのコメント</Text>
-        </View>
-        <Text style={styles.emptyComment}>まだコメントはありません</Text>
-      </View>
-    );
-  }
-  
-  // Determine if comment is long enough to truncate
-  const isLongComment = comment.length > 100;
-  const displayComment = isLongComment && !expanded
-    ? comment.substring(0, 100) + '...'
-    : comment;
-  
-  const handleReadMore = () => {
-    if (onReadMore) {
-      onReadMore();
-    } else {
-      setExpanded(true);
-    }
-  };
+export default function TeacherComment({ content, createdAt }: TeacherCommentProps) {
+  const formattedDate = new Date(createdAt).toLocaleDateString('ja-JP', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <MessageCircle size={18} color="#3B82F6" />
-        <Text style={styles.title}>せんせいからのコメント</Text>
-      </View>
-      <Text style={styles.comment}>{displayComment}</Text>
-      
-      {isLongComment && !expanded && (
-        <Pressable onPress={handleReadMore}>
-          <Text style={styles.readMore}>もっと読む</Text>
-        </Pressable>
-      )}
+      <Text style={styles.content}>{content}</Text>
+      <Text style={styles.date}>{formattedDate}</Text>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    backgroundColor: '#F8FAFC',
     padding: 16,
-    backgroundColor: '#EFF6FF',
-    borderRadius: 8,
-    marginTop: 24,
-    marginBottom: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  content: {
+    fontSize: 16,
+    color: '#1E293B',
+    lineHeight: 24,
     marginBottom: 8,
   },
-  title: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginLeft: 6,
-  },
-  comment: {
-    fontSize: 15,
-    color: '#334155',
-    lineHeight: 22,
-  },
-  emptyComment: {
-    fontSize: 15,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-  },
-  readMore: {
-    color: '#3B82F6',
-    marginTop: 8,
-    fontWeight: '500',
+  date: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'right',
   },
 });

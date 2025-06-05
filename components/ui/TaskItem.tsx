@@ -1,63 +1,31 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+} from 'react-native';
 import { Check } from 'lucide-react-native';
 
-interface TaskItemProps {
-  task: {
-    id: string;
-    content: string;
-    completed: boolean;
-  };
-  onToggle: (id: string) => void;
+export interface TaskItemProps {
+  title: string;
+  isCompleted: boolean;
+  onToggle: (isCompleted: boolean) => void;
 }
 
-export default function TaskItem({ task, onToggle }: TaskItemProps) {
-  const scaleAnim = React.useRef(new Animated.Value(1)).current;
-  
-  const handleToggle = () => {
-    // Animate the task when completed
-    Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 1.1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-    ]).start();
-    
-    onToggle(task.id);
-  };
-
+export default function TaskItem({ title, isCompleted, onToggle }: TaskItemProps) {
   return (
-    <Animated.View 
-      style={[
-        styles.container,
-        { transform: [{ scale: scaleAnim }] }
-      ]}
+    <TouchableOpacity
+      style={[styles.container, isCompleted && styles.completedContainer]}
+      onPress={() => onToggle(!isCompleted)}
     >
-      <Pressable
-        style={styles.checkboxContainer}
-        onPress={handleToggle}
-        hitSlop={10}
-      >
-        <View style={[
-          styles.checkbox,
-          task.completed && styles.checkboxCompleted
-        ]}>
-          {task.completed && <Check size={16} color="#FFFFFF" />}
-        </View>
-      </Pressable>
-      <Text style={[
-        styles.text,
-        task.completed && styles.textCompleted
-      ]}>
-        {task.content}
+      <View style={[styles.checkbox, isCompleted && styles.completedCheckbox]}>
+        {isCompleted && <Check size={16} color="#fff" />}
+      </View>
+      <Text style={[styles.title, isCompleted && styles.completedTitle]}>
+        {title}
       </Text>
-    </Animated.View>
+    </TouchableOpacity>
   );
 }
 
@@ -67,16 +35,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: '#F8FAFC',
     padding: 16,
-    borderRadius: 8,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    borderRadius: 12,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  checkboxContainer: {
-    marginRight: 12,
+  completedContainer: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#86EFAC',
   },
   checkbox: {
     width: 24,
@@ -84,19 +50,21 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     borderWidth: 2,
     borderColor: '#3B82F6',
-    alignItems: 'center',
+    marginRight: 12,
     justifyContent: 'center',
+    alignItems: 'center',
   },
-  checkboxCompleted: {
+  completedCheckbox: {
     backgroundColor: '#3B82F6',
+    borderColor: '#3B82F6',
   },
-  text: {
-    fontSize: 16,
+  title: {
     flex: 1,
+    fontSize: 16,
     color: '#1E293B',
   },
-  textCompleted: {
+  completedTitle: {
+    color: '#059669',
     textDecorationLine: 'line-through',
-    color: '#94A3B8',
   },
 });

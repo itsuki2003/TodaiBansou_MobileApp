@@ -1,203 +1,198 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
-  SafeAreaView,
-  Animated,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
-import DateHeader from '@/components/ui/DateHeader';
-import TaskItem from '@/components/ui/TaskItem';
-import TeacherComment from '@/components/ui/TeacherComment';
+import { supabase } from '../../lib/supabaseClient';
+import TaskItem from '../../components/ui/TaskItem';
+import TeacherComment from '../../components/ui/TeacherComment';
 
-// Mock data for demonstration
-const MOCK_TASKS = [
-  { id: '1', content: '算数: 図形の問題 10問', completed: false },
-  { id: '2', content: '国語: 漢字の練習 20分', completed: false },
-  { id: '3', content: '理科: 植物の成長についてノートまとめ', completed: false },
-  { id: '4', content: '社会: 歴史年表の暗記', completed: false },
-];
+type Task = {
+  id: number;
+  title: string;
+  is_completed: boolean;
+  todo_list_id: number;
+};
 
-const MOCK_TEACHER_COMMENT = "今日もよく頑張りましたね！算数の図形問題は少し難しかったかもしれませんが、解き方のパターンをしっかり覚えておくと良いでしょう。国語は漢字を書く際に、筆順にも気をつけて練習してくださいね。来週のテストに向けて、計画的に復習を進めていきましょう。何か質問があればいつでも聞いてください！";
+type TeacherComment = {
+  id: number;
+  content: string;
+  todo_list_id: number;
+  created_at: string;
+};
 
 export default function HomeScreen() {
-  const [tasks, setTasks] = useState(MOCK_TASKS);
-  const [comment, setComment] = useState(MOCK_TEACHER_COMMENT);
-  const [celebrateTask, setCelebrateTask] = useState<string | null>(null);
-  
-  // Animation for celebration
-  const celebrationOpacity = React.useRef(new Animated.Value(0)).current;
-  const celebrationScale = React.useRef(new Animated.Value(0.5)).current;
-  
-  const handleTaskToggle = (taskId: string) => {
-    setTasks(currentTasks => 
-      currentTasks.map(task => 
-        task.id === taskId 
-          ? { ...task, completed: !task.completed }
-          : task
-      )
-    );
-    
-    // Find the task that was toggled
-    const task = tasks.find(t => t.id === taskId);
-    
-    // If the task is being marked as completed, show celebration
-    if (task && !task.completed) {
-      setCelebrateTask(taskId);
-      
-      // Animate celebration
-      Animated.sequence([
-        Animated.parallel([
-          Animated.timing(celebrationOpacity, {
-            toValue: 1,
-            duration: 200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(celebrationScale, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.delay(1000),
-        Animated.timing(celebrationOpacity, {
-          toValue: 0,
-          duration: 500,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        setCelebrateTask(null);
-        celebrationScale.setValue(0.5);
-      });
+  const [loading, setLoading] = useState(true);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [teacherComment, setTeacherComment] = useState<TeacherComment | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchTodayData();
+  }, []);
+
+  const fetchTodayData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // 現在のユーザーIDを取得
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('ユーザーが見つかりません');
+
+      // 生徒IDを取得
+      const { data: student, error: studentError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('parent_id', user.id)
+        .single();
+
+      if (studentError) throw studentError;
+      if (!student) throw new Error('生徒情報が見つかりません');
+
+      // 今日の日付のtodo_listを取得
+      const today = new Date().toISOString().split('T')[0];
+      const { data: todoList, error: todoListError } = await supabase
+        .from('todo_lists')
+        .select('id')
+        .eq('student_id', student.id)
+        .eq('date', today)
+        .single();
+
+      if (todoListError) throw todoListError;
+      if (!todoList) throw new Error('今日のやることリストが見つかりません');
+
+      // タスクを取得
+      const { data: tasks, error: tasksError } = await supabase
+        .from('tasks')
+        .select('*')
+        .eq('todo_list_id', todoList.id)
+        .order('created_at');
+
+      if (tasksError) throw tasksError;
+      setTasks(tasks || []);
+
+      // 講師コメントを取得
+      const { data: comment, error: commentError } = await supabase
+        .from('teacher_comments')
+        .select('*')
+        .eq('todo_list_id', todoList.id)
+        .eq('date', today)
+        .single();
+
+      if (commentError && commentError.code !== 'PGRST116') throw commentError;
+      setTeacherComment(comment);
+
+    } catch (err: any) {
+      setError(err.message);
+      Alert.alert('エラー', err.message);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  // Get celebration messages
-  const getCelebrationMessage = () => {
-    const messages = [
-      'クリア！',
-      'よくできました！',
-      'すごい！',
-      'がんばりました！',
-      'えらいね！'
-    ];
-    return messages[Math.floor(Math.random() * messages.length)];
+
+  const handleTaskToggle = async (taskId: number, isCompleted: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('tasks')
+        .update({ is_completed: isCompleted })
+        .eq('id', taskId);
+
+      if (error) throw error;
+
+      setTasks(tasks.map(task =>
+        task.id === taskId ? { ...task, is_completed: isCompleted } : task
+      ));
+    } catch (err: any) {
+      Alert.alert('エラー', 'タスクの更新に失敗しました');
+    }
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>東大伴走</Text>
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
-      
-      <DateHeader date={new Date()} />
-      
-      <ScrollView 
-        style={styles.scrollView}
-        contentContainerStyle={styles.content}
-      >
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
+  return (
+    <ScrollView style={styles.container}>
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>今日のやることリスト</Text>
+        {tasks.length === 0 ? (
+          <Text style={styles.emptyText}>今日のタスクはありません</Text>
+        ) : (
+          tasks.map(task => (
+            <TaskItem
+              key={task.id}
+              title={task.title}
+              isCompleted={task.is_completed}
+              onToggle={(isCompleted) => handleTaskToggle(task.id, isCompleted)}
+            />
+          ))
+        )}
+      </View>
+
+      {teacherComment && (
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>今日のやること</Text>
-          
-          {tasks.length === 0 ? (
-            <Text style={styles.emptyText}>今日のタスクはありません</Text>
-          ) : (
-            tasks.map(task => (
-              <TaskItem
-                key={task.id}
-                task={task}
-                onToggle={handleTaskToggle}
-              />
-            ))
-          )}
+          <Text style={styles.sectionTitle}>講師からのコメント</Text>
+          <TeacherComment
+            content={teacherComment.content}
+            createdAt={teacherComment.created_at}
+          />
         </View>
-        
-        <TeacherComment comment={comment} />
-      </ScrollView>
-      
-      {/* Celebration overlay */}
-      {celebrateTask && (
-        <Animated.View 
-          style={[
-            styles.celebrationOverlay,
-            {
-              opacity: celebrationOpacity,
-              transform: [{ scale: celebrationScale }],
-            }
-          ]}
-        >
-          <Text style={styles.celebrationText}>
-            {getCelebrationMessage()}
-          </Text>
-        </Animated.View>
       )}
-    </SafeAreaView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
   },
-  header: {
-    paddingHorizontal: 16,
-    paddingTop: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  logo: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#3B82F6',
-  },
-  scrollView: {
+  loadingContainer: {
     flex: 1,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 32,
-  },
-  section: {
-    marginBottom: 16,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    padding: 16,
-  },
-  celebrationOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(59, 130, 246, 0.2)',
   },
-  celebrationText: {
-    fontSize: 32,
-    fontWeight: '700',
-    color: '#3B82F6',
-    backgroundColor: 'rgba(255, 255, 255, 0.9)',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 16,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  errorText: {
+    color: '#EF4444',
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  section: {
+    padding: 16,
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 16,
+  },
+  emptyText: {
+    color: '#64748B',
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 8,
   },
 });
