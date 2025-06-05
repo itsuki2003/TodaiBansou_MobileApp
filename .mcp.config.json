@@ -1,0 +1,9 @@
+{
+    "servers": {
+      "supabase": {
+        "command": "npx",
+        "args": ["@modelcontextprotocol/server-supabase"],
+        "env_file": ".env.mcp"
+      }
+    }
+  }

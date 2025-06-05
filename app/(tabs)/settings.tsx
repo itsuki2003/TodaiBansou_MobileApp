@@ -20,6 +20,7 @@ import {
   ChevronRight,
   X
 } from 'lucide-react-native';
+import { router } from 'expo-router';
 
 // Mock data for notifications
 const MOCK_NOTIFICATIONS = [
@@ -118,7 +119,7 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <TouchableOpacity 
             style={styles.menuItem}
-            onPress={() => alert('お知らせ一覧へ移動します')}
+            onPress={() => router.push('/notifications')}
           >
             <View style={styles.menuIconContainer}>
               <Bell size={20} color="#3B82F6" />
@@ -207,7 +208,7 @@ export default function SettingsScreen() {
           
           <TouchableOpacity 
             style={styles.viewAllButton}
-            onPress={() => alert('すべてのお知らせを表示します')}
+            onPress={() => router.push('/notifications')}
           >
             <Text style={styles.viewAllText}>すべて表示する</Text>
           </TouchableOpacity>
