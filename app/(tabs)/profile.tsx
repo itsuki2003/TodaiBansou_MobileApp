@@ -1,33 +1,133 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import { ChevronLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { supabase } from '../../lib/supabaseClient';
 
-// ダミーデータ（後でSupabaseから取得するように変更）
-const MOCK_DATA = {
-  student: {
-    name: '山田 太郎',
-    grade: '小学6年生',
-    school: '東京都立小学校',
-  },
+// 型定義
+type Student = {
+  id: string;
+  full_name: string;
+  grade: string;
+  school_attended: string;
+};
+
+type Teacher = {
+  id: string;
+  full_name: string;
+};
+
+type Assignment = {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  role: 'interview' | 'class';
+};
+
+type ProfileData = {
+  student: Student | null;
   teachers: {
-    interview: '佐藤 先生',
-    class: '鈴木 先生',
-  },
-  schedule: [
-    { day: '月曜日', time: '17:00～18:00' },
-    { day: '水曜日', time: '17:00～18:00' },
-    { day: '金曜日', time: '17:00～18:00' },
-  ],
+    interview: string;
+    class: string;
+  };
+  loading: boolean;
+  error: string | null;
 };
 
 export default function ProfileScreen() {
+  const [profileData, setProfileData] = useState<ProfileData>({
+    student: null,
+    teachers: {
+      interview: '',
+      class: '',
+    },
+    loading: true,
+    error: null,
+  });
+
+  useEffect(() => {
+    fetchProfileData();
+  }, []);
+
+  const fetchProfileData = async () => {
+    try {
+      // 現在のユーザーIDを取得
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) throw authError;
+      if (!user) throw new Error('ユーザーが見つかりません');
+
+      // 生徒情報を取得
+      const { data: students, error: studentsError } = await supabase
+        .from('students')
+        .select('*')
+        .eq('parent_id', user.id)
+        .limit(1)
+        .single();
+
+      if (studentsError) throw studentsError;
+      if (!students) throw new Error('生徒情報が見つかりません');
+
+      // 担当講師情報を取得
+      const { data: assignments, error: assignmentsError } = await supabase
+        .from('assignments')
+        .select('*, teachers:teacher_id(*)')
+        .eq('student_id', students.id);
+
+      if (assignmentsError) throw assignmentsError;
+
+      // 面談担当と授業担当を分離
+      const interviewTeacher = assignments?.find((a: Assignment) => a.role === 'interview')?.teachers;
+      const classTeacher = assignments?.find((a: Assignment) => a.role === 'class')?.teachers;
+
+      setProfileData({
+        student: students,
+        teachers: {
+          interview: interviewTeacher?.full_name || '未設定',
+          class: classTeacher?.full_name || '未設定',
+        },
+        loading: false,
+        error: null,
+      });
+    } catch (error) {
+      setProfileData(prev => ({
+        ...prev,
+        loading: false,
+        error: error instanceof Error ? error.message : '予期せぬエラーが発生しました',
+      }));
+    }
+  };
+
+  if (profileData.loading) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <ActivityIndicator size="large" color="#1E293B" />
+      </View>
+    );
+  }
+
+  if (profileData.error) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>{profileData.error}</Text>
+      </View>
+    );
+  }
+
+  if (!profileData.student) {
+    return (
+      <View style={[styles.container, styles.centerContent]}>
+        <Text style={styles.errorText}>生徒情報が見つかりません</Text>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       {/* ヘッダー */}
@@ -49,15 +149,15 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>氏名</Text>
-              <Text style={styles.value}>{MOCK_DATA.student.name}</Text>
+              <Text style={styles.value}>{profileData.student.full_name}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>学年</Text>
-              <Text style={styles.value}>{MOCK_DATA.student.grade}</Text>
+              <Text style={styles.value}>{profileData.student.grade}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>通塾先</Text>
-              <Text style={styles.value}>{MOCK_DATA.student.school}</Text>
+              <Text style={styles.value}>{profileData.student.school_attended}</Text>
             </View>
           </View>
         </View>
@@ -68,11 +168,11 @@ export default function ProfileScreen() {
           <View style={styles.card}>
             <View style={styles.infoRow}>
               <Text style={styles.label}>面談担当</Text>
-              <Text style={styles.value}>{MOCK_DATA.teachers.interview}</Text>
+              <Text style={styles.value}>{profileData.teachers.interview}</Text>
             </View>
             <View style={styles.infoRow}>
               <Text style={styles.label}>授業担当</Text>
-              <Text style={styles.value}>{MOCK_DATA.teachers.class}</Text>
+              <Text style={styles.value}>{profileData.teachers.class}</Text>
             </View>
           </View>
         </View>
@@ -81,18 +181,19 @@ export default function ProfileScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>基本の授業スケジュール</Text>
           <View style={styles.card}>
-            {MOCK_DATA.schedule.map((item, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.infoRow,
-                  index !== MOCK_DATA.schedule.length - 1 && styles.borderBottom,
-                ]}
-              >
-                <Text style={styles.label}>{item.day}</Text>
-                <Text style={styles.value}>{item.time}</Text>
-              </View>
-            ))}
+            {/* スケジュールデータがないため、仮のダミーデータを表示 */}
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>月曜日</Text>
+              <Text style={styles.value}>17:00～18:00</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>水曜日</Text>
+              <Text style={styles.value}>17:00～18:00</Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.label}>金曜日</Text>
+              <Text style={styles.value}>17:00～18:00</Text>
+            </View>
           </View>
         </View>
       </ScrollView>
@@ -162,6 +263,15 @@ const styles = StyleSheet.create({
   value: {
     fontSize: 16,
     color: '#1E293B',
+    fontWeight: '500',
+  },
+  centerContent: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    color: 'red',
+    fontSize: 16,
     fontWeight: '500',
   },
 }); 
