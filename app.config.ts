@@ -6,10 +6,10 @@ const defaultConfig: ExpoConfig = {
   slug: 'todaibansou-mobile',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/images/icon.png',
   userInterfaceStyle: 'light',
   splash: {
-    image: './assets/splash.png',
+    image: './assets/images/icon.png',
     resizeMode: 'contain',
     backgroundColor: '#ffffff'
   },
@@ -21,12 +21,12 @@ const defaultConfig: ExpoConfig = {
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/adaptive-icon.png',
+      foregroundImage: './assets/images/icon.png',
       backgroundColor: '#ffffff'
     }
   },
   web: {
-    favicon: './assets/favicon.png'
+    favicon: './assets/images/favicon.png'
   }
 };
 

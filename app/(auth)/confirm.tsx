@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
-import * as Linking from 'expo-linking';
+import { supabase } from '@/lib/supabaseClient';
 
 export default function ConfirmScreen() {
   const [loading, setLoading] = useState(true);
@@ -27,10 +26,30 @@ export default function ConfirmScreen() {
           throw verifyError;
         }
 
-        // 確認成功後、メイン画面に遷移
-        router.replace('/(tabs)');
+        // 認証成功後、ユーザーの生徒情報をチェック
+        const { data: { user } } = await supabase.auth.getUser();
+        
+        if (user) {
+          // 生徒情報が存在するかチェック
+          const { data: studentData } = await supabase
+            .from('students')
+            .select('id')
+            .eq('user_id', user.id)
+            .single();
+
+          if (!studentData) {
+            // 生徒情報が未登録の場合、生徒情報登録画面に遷移
+            router.replace('/student-registration');
+          } else {
+            // 既存ユーザーの場合、メイン画面に遷移
+            router.replace('/(tabs)');
+          }
+        } else {
+          router.replace('/(tabs)');
+        }
       } catch (err: any) {
-        setError(err.message);
+        console.error('Confirmation error:', err);
+        setError('メールアドレスの確認に失敗しました。');
       } finally {
         setLoading(false);
       }

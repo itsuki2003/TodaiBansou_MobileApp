@@ -58,7 +58,7 @@ export default function SettingsScreen() {
       const formattedNotifications: RecentNotification[] = notificationsData?.map(notification => ({
         id: notification.id,
         title: notification.title,
-        category: notification.notification_categories?.name || 'お知らせ',
+        category: (notification.notification_categories as any)?.name || 'お知らせ',
         date: notification.publish_timestamp,
         read: false, // TODO: Implement read status check
       })) || [];
@@ -80,17 +80,17 @@ export default function SettingsScreen() {
   
   const handleProfile = () => {
     // Navigate to profile screen
-    alert('プロフィール画面へ移動します');
+    Alert.alert('プロフィール画面へ移動します');
   };
   
   const handleTerms = () => {
     // Navigate to terms screen
-    alert('利用規約画面へ移動します');
+    Alert.alert('利用規約画面へ移動します');
   };
   
   const handlePrivacy = () => {
     // Navigate to privacy policy screen
-    alert('プライバシーポリシー画面へ移動します');
+    Alert.alert('プライバシーポリシー画面へ移動します');
   };
   
   const handleLogout = () => {
@@ -107,7 +107,7 @@ export default function SettingsScreen() {
           style: 'destructive',
           onPress: () => {
             // Log out logic would go here
-            alert('ログアウトしました');
+            Alert.alert('ログアウトしました');
           },
         },
       ],

@@ -8,16 +8,20 @@ type AuthContextType = {
   user: User | null;
   session: Session | null;
   loading: boolean;
+  isLoading: boolean;
   userRole: UserRole;
   userRoleLoading: boolean;
+  isFirstTimeUser: boolean;
 };
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
   session: null,
   loading: true,
+  isLoading: true,
   userRole: null,
   userRoleLoading: true,
+  isFirstTimeUser: false,
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,6 +30,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [loading, setLoading] = useState(true);
   const [userRole, setUserRole] = useState<UserRole>(null);
   const [userRoleLoading, setUserRoleLoading] = useState(true);
+  const [isFirstTimeUser, setIsFirstTimeUser] = useState(false);
 
   // ユーザーの役割を取得する関数
   const fetchUserRole = async (userId: string) => {
@@ -43,6 +48,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (teacherData) {
         setUserRole('teacher');
+        setIsFirstTimeUser(false);
         return;
       }
 
@@ -59,14 +65,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (studentData) {
         setUserRole('student');
+        setIsFirstTimeUser(false);
         return;
       }
 
-      // どちらにも該当しない場合
+      // どちらにも該当しない場合（初回ユーザー）
       setUserRole(null);
+      setIsFirstTimeUser(true);
     } catch (error) {
       console.error('Error fetching user role:', error);
       setUserRole(null);
+      setIsFirstTimeUser(false);
     } finally {
       setUserRoleLoading(false);
     }
@@ -84,6 +93,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUserRole(null);
         setUserRoleLoading(false);
+        setIsFirstTimeUser(false);
       }
     });
 
@@ -98,6 +108,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       } else {
         setUserRole(null);
         setUserRoleLoading(false);
+        setIsFirstTimeUser(false);
       }
     });
 
@@ -105,7 +116,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, userRole, userRoleLoading }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      loading, 
+      isLoading: loading, 
+      userRole, 
+      userRoleLoading,
+      isFirstTimeUser 
+    }}>
       {children}
     </AuthContext.Provider>
   );

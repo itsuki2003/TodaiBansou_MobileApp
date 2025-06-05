@@ -10,10 +10,11 @@ import {
   TouchableOpacity,
   SafeAreaView, // SafeAreaViewを追加
 } from 'react-native';
-import { supabase } from '../../lib/supabaseClient'; // supabaseClientのパスを確認してください
-import TaskItem from '../../components/ui/TaskItem'; // TaskItemのパスを確認してください
-import TeacherCommentComponent from '../../components/ui/TeacherComment'; // TeacherCommentコンポーネントのインポート名変更とパス確認
-import DateHeader from '../../components/ui/DateHeader'; // DateHeaderのパスを確認してください
+import { supabase } from '@/lib/supabaseClient';
+import TaskItem from '@/components/ui/TaskItem';
+import TeacherCommentComponent from '@/components/ui/TeacherComment';
+import DateHeader from '@/components/ui/DateHeader';
+import { useAuth } from '@/contexts/AuthContext';
 
 // Supabaseのテーブルカラム名に合わせた型定義に変更
 type Task = {
@@ -48,6 +49,7 @@ const getWeekStartDate = (date: Date) => {
 };
 
 export default function HomeScreen() {
+  const { user, userRole, userRoleLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -62,11 +64,20 @@ export default function HomeScreen() {
   const fetchTodayData = useCallback(async () => {
     try {
       setError(null);
-      setLoading(true); // fetch開始時にローディングをtrueに
+      setLoading(true);
 
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      if (userError) throw new Error(`認証エラー: ${userError.message}`);
-      if (!user) throw new Error('ユーザーが見つかりません。ログインしてください。');
+      // AuthContextからuser情報を使用
+      if (!user) {
+        throw new Error('認証エラー: Auth session missing!');
+      }
+
+      // ユーザーロールが学生でない場合は何もしない
+      if (userRole !== 'student') {
+        setTasks([]);
+        setTeacherComment(null);
+        setLoading(false);
+        return;
+      }
 
       // ログインユーザーに紐づく生徒IDを取得 (1保護者1生徒をまず想定)
       const { data: studentData, error: studentError } = await supabase
@@ -155,10 +166,13 @@ export default function HomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [user, userRole]);
 
   useEffect(() => {
-    fetchTodayData();
+    // ユーザーロールのローディングが完了し、かつユーザーが存在する場合にのみデータを取得
+    if (!userRoleLoading && user) {
+      fetchTodayData();
+    }
     // Supabaseのリアルタイムリスナーを設定することも検討 (オプション)
     // 例: tasksテーブルの変更をリッスン
     // const taskListener = supabase.channel('public:tasks')
@@ -170,7 +184,7 @@ export default function HomeScreen() {
     // return () => {
     //   supabase.removeChannel(taskListener);
     // };
-  }, [fetchTodayData]);
+  }, [fetchTodayData, userRoleLoading, user]);
 
   const handleTaskToggle = async (taskId: string) => { // taskIdをstringに
     const originalTasks = [...tasks];
@@ -286,25 +300,18 @@ export default function HomeScreen() {
           {tasks.map(task => (
             <TaskItem
               key={task.id}
-              task={{ // TaskItemのPropsに合わせて調整
-                id: task.id,
-                content: task.content, // `title`から`content`へ
-                completed: task.is_completed, // `isCompleted`から`completed`へ
-              }}
-              onToggle={() => handleTaskToggle(task.id)} // isCompletedは内部で反転させる
+              title={task.content}
+              isCompleted={task.is_completed}
+              onToggle={() => handleTaskToggle(task.id)}
             />
           ))}
         </View>
 
         {teacherComment && (
-          // TeacherCommentComponentのPropsに合わせて修正
           <TeacherCommentComponent
-            comment={teacherComment.comment_content} 
-            // createdAtが必要な場合はTeacherCommentComponent側で対応し、データを渡す
+            content={teacherComment.comment_content}
+            createdAt={teacherComment.created_at}
           />
-        )}
-        {!teacherComment && !loading && !error && (
-             <TeacherCommentComponent comment={null} /> // コメントがない場合の表示
         )}
       </ScrollView>
       {/* タスク完了時のアニメーションOverlayは、TaskItem内で個別に表示するか、

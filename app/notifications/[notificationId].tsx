@@ -78,7 +78,9 @@ export default function NotificationDetailScreen() {
 
       const notificationWithCategory = {
         ...notificationData,
-        category: notificationData.notification_categories,
+        category: Array.isArray(notificationData.notification_categories) 
+          ? notificationData.notification_categories[0]
+          : notificationData.notification_categories,
       };
 
       setNotification(notificationWithCategory);
@@ -148,7 +150,7 @@ export default function NotificationDetailScreen() {
       marginBottom: 12,
     },
     strong: {
-      fontWeight: '600',
+      fontWeight: '600' as const,
       color: '#1E293B',
     },
     link: {
@@ -247,7 +249,10 @@ export default function NotificationDetailScreen() {
         <View style={styles.contentContainer}>
           <Markdown
             style={markdownStyles}
-            onLinkPress={handleLinkPress}
+            onLinkPress={(url) => {
+              handleLinkPress(url);
+              return true;
+            }}
           >
             {notification.content}
           </Markdown>

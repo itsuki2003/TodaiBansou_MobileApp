@@ -41,7 +41,8 @@ export default function LoginScreen() {
       console.log('ログイン成功:', data);
       router.replace('/(tabs)');
     } catch (error: any) {
-      Alert.alert('ログインエラー', error.message);
+      console.error('Login error:', error);
+      Alert.alert('ログインエラー', 'メールアドレスまたはパスワードが正しくありません。');
     } finally {
       setLoading(false);
     }

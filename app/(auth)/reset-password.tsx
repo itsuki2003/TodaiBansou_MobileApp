@@ -11,42 +11,44 @@ import {
   Platform,
   ScrollView,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
-import { Mail, Lock, BookOpen, ArrowLeft } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { supabase } from '@/lib/supabaseClient';
+import { Mail, BookOpen, ArrowLeft } from 'lucide-react-native';
+import Constants from 'expo-constants';
+import * as Linking from 'expo-linking';
 
-export default function SignUpScreen() {
+export default function ResetPasswordScreen() {
   const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleSignUp = async () => {
-    if (password !== confirmPassword) {
-      Alert.alert('エラー', 'パスワードが一致しません。');
+  const handleResetPassword = async () => {
+    if (!email) {
+      Alert.alert('エラー', 'メールアドレスを入力してください。');
       return;
     }
 
-    if (password.length < 6) {
-      Alert.alert('エラー', 'パスワードは6文字以上で入力してください。');
+    if (!email.includes('@')) {
+      Alert.alert('エラー', '正しいメールアドレスを入力してください。');
       return;
     }
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
+      
+      // 動的にリダイレクトURLを生成
+      const redirectUrl = Linking.createURL('(auth)/confirm');
+      
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: redirectUrl,
       });
 
       if (error) {
         throw error;
       }
 
-      console.log('SignUp Response:', data);
       Alert.alert(
-        '登録完了',
-        '登録確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。',
+        'パスワードリセット',
+        'パスワードリセット用のリンクをメールで送信しました。メール内のリンクをクリックして新しいパスワードを設定してください。',
         [
           {
             text: 'OK',
@@ -55,15 +57,8 @@ export default function SignUpScreen() {
         ]
       );
     } catch (error: any) {
-      console.error('Signup error:', error);
-      let errorMessage = 'アカウント作成に失敗しました。しばらく時間をおいて再度お試しください。';
-      
-      // 特定のエラーの場合のみ、具体的なメッセージを表示
-      if (error.message?.includes('already registered') || error.message?.includes('User already registered')) {
-        errorMessage = 'このメールアドレスは既に登録されています。ログイン画面からログインしてください。';
-      }
-      
-      Alert.alert('エラー', errorMessage);
+      console.error('Password reset error:', error);
+      Alert.alert('エラー', 'パスワードリセットメールの送信に失敗しました。しばらく時間をおいて再度お試しください。');
     } finally {
       setLoading(false);
     }
@@ -90,10 +85,15 @@ export default function SignUpScreen() {
             <BookOpen size={40} color="#3B82F6" />
           </View>
           <Text style={styles.appName}>東大伴走</Text>
-          <Text style={styles.subtitle}>新規アカウント登録</Text>
+          <Text style={styles.subtitle}>パスワードリセット</Text>
         </View>
 
         <View style={styles.formContainer}>
+          <Text style={styles.description}>
+            ご登録いただいたメールアドレスを入力してください。{'\n'}
+            パスワードリセット用のリンクをお送りします。
+          </Text>
+
           <View style={styles.inputContainer}>
             <Mail size={20} color="#64748B" style={styles.inputIcon} />
             <TextInput
@@ -107,49 +107,24 @@ export default function SignUpScreen() {
             />
           </View>
 
-          <View style={styles.inputContainer}>
-            <Lock size={20} color="#64748B" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="パスワード（6文字以上）"
-              value={password}
-              onChangeText={setPassword}
-              secureTextEntry
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
-          <View style={styles.inputContainer}>
-            <Lock size={20} color="#64748B" style={styles.inputIcon} />
-            <TextInput
-              style={styles.input}
-              placeholder="パスワード（確認）"
-              value={confirmPassword}
-              onChangeText={setConfirmPassword}
-              secureTextEntry
-              placeholderTextColor="#94A3B8"
-            />
-          </View>
-
           <TouchableOpacity
             style={styles.button}
-            onPress={handleSignUp}
+            onPress={handleResetPassword}
             disabled={loading}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>アカウントを作成</Text>
+              <Text style={styles.buttonText}>リセットメールを送信</Text>
             )}
           </TouchableOpacity>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
-            <Link href="/login" style={styles.link}>
-              ログイン
-            </Link>
-            <Text style={styles.footerText}>へ</Text>
-          </View>
+          <TouchableOpacity 
+            style={styles.backToLoginButton}
+            onPress={() => router.replace('/login')}
+          >
+            <Text style={styles.backToLoginText}>ログイン画面に戻る</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -200,6 +175,13 @@ const styles = StyleSheet.create({
     maxWidth: 400,
     alignSelf: 'center',
   },
+  description: {
+    fontSize: 15,
+    color: '#64748B',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 32,
+  },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -240,21 +222,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+  backToLoginButton: {
     marginTop: 24,
-    flexWrap: 'wrap',
+    alignItems: 'center',
   },
-  footerText: {
+  backToLoginText: {
     color: '#64748B',
     fontSize: 15,
-  },
-  link: {
-    color: '#3B82F6',
-    fontWeight: '600',
-    fontSize: 15,
-    marginHorizontal: 4,
   },
 });
