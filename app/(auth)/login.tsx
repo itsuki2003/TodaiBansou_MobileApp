@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
-import { Mail, Lock } from 'lucide-react-native';
+import { Mail, Lock, BookOpen } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -57,12 +57,11 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/3769021/pexels-photo-3769021.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
-            style={styles.logo}
-          />
+          <View style={styles.logoWrapper}>
+            <BookOpen size={40} color="#3B82F6" />
+          </View>
           <Text style={styles.appName}>東大伴走</Text>
-          <Text style={styles.subtitle}>あなたの学びをサポート</Text>
+          <Text style={styles.subtitle}>中学受験に向けて、一緒に頑張りましょう</Text>
         </View>
 
         <View style={styles.formContainer}>
@@ -105,11 +104,12 @@ export default function LoginScreen() {
 
           <View style={styles.links}>
             <Link href="/signup" style={styles.link}>
-              アカウントをお持ちでないですか？
-              <Text style={styles.linkHighlight}> 新規登録</Text>
+              はじめての方は
+              <Text style={styles.linkHighlight}>新規登録</Text>
+              へ
             </Link>
-            <Link href="/reset-password" style={styles.link}>
-              パスワードをお忘れですか？
+            <Link href="/reset-password" style={styles.linkSecondary}>
+              パスワードをお忘れの方はこちら
             </Link>
           </View>
         </View>
@@ -130,23 +130,28 @@ const styles = StyleSheet.create({
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 48,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  logoWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
     color: '#64748B',
+    textAlign: 'center',
+    maxWidth: '80%',
   },
   formContainer: {
     width: '100%',
@@ -200,7 +205,12 @@ const styles = StyleSheet.create({
   link: {
     color: '#64748B',
     marginVertical: 8,
+    fontSize: 15,
+  },
+  linkSecondary: {
+    color: '#94A3B8',
     fontSize: 14,
+    marginTop: 4,
   },
   linkHighlight: {
     color: '#3B82F6',

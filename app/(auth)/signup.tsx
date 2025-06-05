@@ -9,12 +9,11 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  Image,
   ScrollView,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
-import { Mail, Lock, User } from 'lucide-react-native';
+import { Mail, Lock, BookOpen, ArrowLeft } from 'lucide-react-native';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -71,11 +70,17 @@ export default function SignUpScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
       >
+        <TouchableOpacity 
+          style={styles.backButton}
+          onPress={() => router.back()}
+        >
+          <ArrowLeft size={24} color="#64748B" />
+        </TouchableOpacity>
+
         <View style={styles.logoContainer}>
-          <Image
-            source={{ uri: 'https://images.pexels.com/photos/3769021/pexels-photo-3769021.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=2' }}
-            style={styles.logo}
-          />
+          <View style={styles.logoWrapper}>
+            <BookOpen size={40} color="#3B82F6" />
+          </View>
           <Text style={styles.appName}>東大伴走</Text>
           <Text style={styles.subtitle}>新規アカウント登録</Text>
         </View>
@@ -131,10 +136,11 @@ export default function SignUpScreen() {
           </TouchableOpacity>
 
           <View style={styles.footer}>
-            <Text style={styles.footerText}>既にアカウントをお持ちですか？</Text>
+            <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
             <Link href="/login" style={styles.link}>
               ログイン
             </Link>
+            <Text style={styles.footerText}>へ</Text>
           </View>
         </View>
       </ScrollView>
@@ -152,21 +158,30 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: 20,
   },
+  backButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    zIndex: 1,
+  },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 48,
   },
-  logo: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
+  logoWrapper: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
     marginBottom: 16,
   },
   appName: {
-    fontSize: 28,
+    fontSize: 32,
     fontWeight: 'bold',
     color: '#1E293B',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   subtitle: {
     fontSize: 16,
@@ -222,13 +237,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: 24,
+    flexWrap: 'wrap',
   },
   footerText: {
     color: '#64748B',
-    marginRight: 8,
+    fontSize: 15,
   },
   link: {
     color: '#3B82F6',
     fontWeight: '600',
+    fontSize: 15,
+    marginHorizontal: 4,
   },
 });
