@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -6,9 +6,6 @@ import {
   ScrollView,
   SafeAreaView,
   TouchableOpacity,
-  Image,
-  Modal,
-  Pressable,
   Alert,
 } from 'react-native';
 import { 
@@ -18,57 +15,67 @@ import {
   Shield, 
   LogOut,
   ChevronRight,
-  X
 } from 'lucide-react-native';
 import { router } from 'expo-router';
+import { supabase } from '@/lib/supabaseClient';
 
-// Mock data for notifications
-const MOCK_NOTIFICATIONS = [
-  {
-    id: '1',
-    title: '6月のスケジュール更新',
-    category: 'お知らせ',
-    date: '2023-05-28',
-    read: false,
-    content: '6月の授業スケジュールが更新されました。カレンダーからご確認ください。',
-  },
-  {
-    id: '2',
-    title: '夏期講習のご案内',
-    category: 'お知らせ',
-    date: '2023-05-25',
-    read: true,
-    content: '今年の夏期講習についてのご案内です。7月24日から8月20日まで実施します。詳細は添付の資料をご覧ください。',
-  },
-  {
-    id: '3',
-    title: 'システムメンテナンスのお知らせ',
-    category: 'システム',
-    date: '2023-05-20',
-    read: true,
-    content: '6月3日（土）午前2時から午前5時までシステムメンテナンスを実施します。この間はアプリをご利用いただけません。ご不便をおかけしますが、ご理解のほどよろしくお願いいたします。',
-  },
-];
+interface RecentNotification {
+  id: string;
+  title: string;
+  category: string;
+  date: string;
+  read: boolean;
+}
 
 export default function SettingsScreen() {
-  const [notifications, setNotifications] = useState(MOCK_NOTIFICATIONS);
-  const [showNotificationModal, setShowNotificationModal] = useState(false);
-  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
   
-  const unreadCount = notifications.filter(n => !n.read).length;
-  
-  const handleNotificationPress = (notification: any) => {
-    setSelectedNotification(notification);
-    setShowNotificationModal(true);
-    
-    // Mark notification as read
-    if (!notification.read) {
-      setNotifications(currentNotifications =>
-        currentNotifications.map(n =>
-          n.id === notification.id ? { ...n, read: true } : n
-        )
-      );
+  const fetchRecentNotifications = useCallback(async () => {
+    try {
+      // Fetch recent notifications (limit to 3 for settings preview)
+      const { data: notificationsData, error: notificationsError } = await supabase
+        .from('notifications')
+        .select(`
+          id,
+          title,
+          publish_timestamp,
+          notification_categories:category_id (
+            name
+          )
+        `)
+        .eq('status', 'published')
+        .order('publish_timestamp', { ascending: false })
+        .limit(3);
+
+      if (notificationsError) {
+        console.error('Error fetching notifications:', notificationsError);
+        return;
+      }
+
+      // TODO: Fetch read status for current user
+      // For now, we'll mark all as unread
+      const formattedNotifications: RecentNotification[] = notificationsData?.map(notification => ({
+        id: notification.id,
+        title: notification.title,
+        category: notification.notification_categories?.name || 'お知らせ',
+        date: notification.publish_timestamp,
+        read: false, // TODO: Implement read status check
+      })) || [];
+
+      setRecentNotifications(formattedNotifications);
+      setUnreadCount(formattedNotifications.filter(n => !n.read).length);
+    } catch (err) {
+      console.error('Error fetching recent notifications:', err);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchRecentNotifications();
+  }, [fetchRecentNotifications]);
+
+  const handleNotificationPress = (notification: RecentNotification) => {
+    router.push(`/notifications/${notification.id}`);
   };
   
   const handleProfile = () => {
@@ -180,83 +187,48 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>最近のお知らせ</Text>
           
-          {notifications.map((notification) => (
-            <TouchableOpacity
-              key={notification.id}
-              style={styles.notificationItem}
-              onPress={() => handleNotificationPress(notification)}
-            >
-              <View style={styles.notificationHeader}>
-                <Text style={styles.notificationCategory}>
-                  {notification.category}
-                </Text>
-                <Text style={styles.notificationDate}>
-                  {new Date(notification.date).toLocaleDateString('ja-JP')}
-                </Text>
-              </View>
+          {recentNotifications.length > 0 ? (
+            <>
+              {recentNotifications.map((notification) => (
+                <TouchableOpacity
+                  key={notification.id}
+                  style={styles.notificationItem}
+                  onPress={() => handleNotificationPress(notification)}
+                >
+                  <View style={styles.notificationHeader}>
+                    <Text style={styles.notificationCategory}>
+                      {notification.category}
+                    </Text>
+                    <Text style={styles.notificationDate}>
+                      {new Date(notification.date).toLocaleDateString('ja-JP')}
+                    </Text>
+                  </View>
+                  
+                  <View style={styles.notificationContent}>
+                    <Text style={styles.notificationTitle}>
+                      {notification.title}
+                    </Text>
+                    {!notification.read && (
+                      <View style={styles.unreadDot} />
+                    )}
+                  </View>
+                </TouchableOpacity>
+              ))}
               
-              <View style={styles.notificationContent}>
-                <Text style={styles.notificationTitle}>
-                  {notification.title}
-                </Text>
-                {!notification.read && (
-                  <View style={styles.unreadDot} />
-                )}
-              </View>
-            </TouchableOpacity>
-          ))}
-          
-          <TouchableOpacity 
-            style={styles.viewAllButton}
-            onPress={() => router.push('/notifications')}
-          >
-            <Text style={styles.viewAllText}>すべて表示する</Text>
-          </TouchableOpacity>
+              <TouchableOpacity 
+                style={styles.viewAllButton}
+                onPress={() => router.push('/notifications')}
+              >
+                <Text style={styles.viewAllText}>すべて表示する</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <Text style={styles.noNotificationsText}>
+              現在、お知らせはありません
+            </Text>
+          )}
         </View>
       </ScrollView>
-      
-      {/* Notification Detail Modal */}
-      <Modal
-        visible={showNotificationModal}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setShowNotificationModal(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>お知らせ</Text>
-              <Pressable
-                style={styles.closeButton}
-                onPress={() => setShowNotificationModal(false)}
-              >
-                <X size={20} color="#64748B" />
-              </Pressable>
-            </View>
-            
-            {selectedNotification && (
-              <ScrollView style={styles.modalContent}>
-                <View style={styles.notificationDetailHeader}>
-                  <Text style={styles.notificationDetailCategory}>
-                    {selectedNotification.category}
-                  </Text>
-                  <Text style={styles.notificationDetailDate}>
-                    {new Date(selectedNotification.date).toLocaleDateString('ja-JP')}
-                  </Text>
-                </View>
-                
-                <Text style={styles.notificationDetailTitle}>
-                  {selectedNotification.title}
-                </Text>
-                
-                <Text style={styles.notificationDetailContent}>
-                  {selectedNotification.content}
-                </Text>
-              </ScrollView>
-            )}
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -396,67 +368,10 @@ const styles = StyleSheet.create({
     color: '#3B82F6',
     fontWeight: '500',
   },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    width: '90%',
-    maxWidth: 400,
-    maxHeight: '80%',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  closeButton: {
-    padding: 4,
-  },
-  modalContent: {
-    padding: 16,
-    maxHeight: 400,
-  },
-  notificationDetailHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  notificationDetailCategory: {
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '500',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-  },
-  notificationDetailDate: {
-    fontSize: 12,
-    color: '#64748B',
-  },
-  notificationDetailTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  notificationDetailContent: {
+  noNotificationsText: {
     fontSize: 14,
-    color: '#334155',
-    lineHeight: 20,
+    color: '#64748B',
+    textAlign: 'center',
+    paddingVertical: 20,
   },
 });

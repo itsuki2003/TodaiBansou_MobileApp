@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
+  FlatList,
   SafeAreaView,
   TouchableOpacity,
   ActivityIndicator,
@@ -12,15 +12,14 @@ import {
 import { ArrowLeft, Bell } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
-import { useAuth } from '@/contexts/AuthContext';
 
-type NotificationCategory = {
+interface NotificationCategory {
   id: string;
   name: string;
   color: string;
-};
+}
 
-type Notification = {
+interface Notification {
   id: string;
   title: string;
   content: string;
@@ -29,37 +28,21 @@ type Notification = {
   status: string;
   target_audience: string;
   category?: NotificationCategory;
-};
+  is_read?: boolean;
+}
 
-export default function NotificationsScreen() {
+export default function NotificationListScreen() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const [categories, setCategories] = useState<NotificationCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { user } = useAuth();
-
-  const fetchCategories = useCallback(async () => {
-    try {
-      const { data, error } = await supabase
-        .from('notification_categories')
-        .select('*')
-        .order('name');
-
-      if (error) throw error;
-      setCategories(data || []);
-    } catch (err) {
-      console.error('Error fetching categories:', err);
-    }
-  }, []);
 
   const fetchNotifications = useCallback(async () => {
-    if (!user) return;
-
     try {
       setError(null);
       
-      const { data, error } = await supabase
+      // Fetch notifications with category information
+      const { data: notificationsData, error: notificationsError } = await supabase
         .from('notifications')
         .select(`
           id,
@@ -68,71 +51,109 @@ export default function NotificationsScreen() {
           publish_timestamp,
           category_id,
           status,
-          target_audience
+          target_audience,
+          notification_categories:category_id (
+            id,
+            name,
+            color
+          )
         `)
         .eq('status', 'published')
         .order('publish_timestamp', { ascending: false });
 
-      if (error) throw error;
+      if (notificationsError) {
+        throw notificationsError;
+      }
 
-      const notificationsWithCategories = (data || []).map(notification => {
-        const category = categories.find(cat => cat.id === notification.category_id);
-        return {
-          ...notification,
-          category
-        };
-      });
+      // TODO: Fetch read status for current user
+      // For now, we'll mark all as unread
+      const notificationsWithReadStatus = notificationsData?.map(notification => ({
+        ...notification,
+        category: notification.notification_categories,
+        is_read: false, // TODO: Implement read status check
+      })) || [];
 
-      setNotifications(notificationsWithCategories);
+      setNotifications(notificationsWithReadStatus);
     } catch (err) {
       console.error('Error fetching notifications:', err);
-      setError('お知らせの取得に失敗しました。');
+      setError('お知らせの取得に失敗しました');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, [user, categories]);
-
-  const loadData = useCallback(async () => {
-    setLoading(true);
-    await fetchCategories();
-  }, [fetchCategories]);
+  }, []);
 
   useEffect(() => {
-    loadData().finally(() => setLoading(false));
-  }, [loadData]);
+    fetchNotifications();
+  }, [fetchNotifications]);
 
-  useEffect(() => {
-    if (categories.length > 0) {
-      fetchNotifications();
-    }
-  }, [categories, fetchNotifications]);
-
-  const onRefresh = useCallback(async () => {
+  const onRefresh = useCallback(() => {
     setRefreshing(true);
-    await fetchCategories();
-    await fetchNotifications();
-    setRefreshing(false);
-  }, [fetchCategories, fetchNotifications]);
+    fetchNotifications();
+  }, [fetchNotifications]);
 
   const handleNotificationPress = (notificationId: string) => {
     router.push(`/notifications/${notificationId}`);
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('ja-JP', {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-    });
+  const handleGoBack = () => {
+    router.back();
   };
+
+  const renderNotificationItem = ({ item }: { item: Notification }) => (
+    <TouchableOpacity
+      style={styles.notificationItem}
+      onPress={() => handleNotificationPress(item.id)}
+    >
+      <View style={styles.notificationHeader}>
+        <View style={[
+          styles.categoryBadge,
+          { backgroundColor: item.category?.color || '#EFF6FF' }
+        ]}>
+          <Text style={[
+            styles.categoryText,
+            { color: item.category?.color ? '#FFFFFF' : '#3B82F6' }
+          ]}>
+            {item.category?.name || 'お知らせ'}
+          </Text>
+        </View>
+        <Text style={styles.notificationDate}>
+          {new Date(item.publish_timestamp).toLocaleDateString('ja-JP')}
+        </Text>
+      </View>
+      
+      <View style={styles.notificationContent}>
+        <Text style={styles.notificationTitle} numberOfLines={2}>
+          {item.title}
+        </Text>
+        {!item.is_read && (
+          <View style={styles.unreadDot} />
+        )}
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderEmptyState = () => (
+    <View style={styles.emptyState}>
+      <Bell size={48} color="#94A3B8" />
+      <Text style={styles.emptyStateText}>現在、お知らせはありません</Text>
+    </View>
+  );
+
+  const renderErrorState = () => (
+    <View style={styles.errorState}>
+      <Text style={styles.errorText}>{error}</Text>
+      <TouchableOpacity style={styles.retryButton} onPress={fetchNotifications}>
+        <Text style={styles.retryButtonText}>再試行</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.header}>
-          <TouchableOpacity 
-            style={styles.backButton}
-            onPress={() => router.back()}
-          >
+          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
             <ArrowLeft size={24} color="#1E293B" />
           </TouchableOpacity>
           <Text style={styles.title}>お知らせ</Text>
@@ -148,72 +169,33 @@ export default function NotificationsScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
+        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
           <ArrowLeft size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.title}>お知らせ</Text>
       </View>
-
-      <ScrollView 
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {error ? (
-          <View style={styles.errorContainer}>
-            <Text style={styles.errorText}>{error}</Text>
-            <TouchableOpacity style={styles.retryButton} onPress={onRefresh}>
-              <Text style={styles.retryText}>再試行</Text>
-            </TouchableOpacity>
-          </View>
-        ) : notifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Bell size={48} color="#94A3B8" />
-            <Text style={styles.emptyText}>現在、お知らせはありません</Text>
-          </View>
-        ) : (
-          <View style={styles.notificationsList}>
-            {notifications.map((notification) => (
-              <TouchableOpacity
-                key={notification.id}
-                style={styles.notificationItem}
-                onPress={() => handleNotificationPress(notification.id)}
-              >
-                <View style={styles.notificationHeader}>
-                  <View style={styles.categoryContainer}>
-                    <Text style={[
-                      styles.categoryText,
-                      { backgroundColor: notification.category?.color || '#EFF6FF' }
-                    ]}>
-                      {notification.category?.name || 'お知らせ'}
-                    </Text>
-                  </View>
-                  <Text style={styles.dateText}>
-                    {formatDate(notification.publish_timestamp)}
-                  </Text>
-                </View>
-                
-                <View style={styles.notificationContent}>
-                  <Text style={styles.notificationTitle} numberOfLines={2}>
-                    {notification.title}
-                  </Text>
-                  <View style={styles.unreadIndicator}>
-                    <View style={styles.unreadDot} />
-                  </View>
-                </View>
-                
-                <Text style={styles.notificationPreview} numberOfLines={2}>
-                  {notification.content}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-        )}
-      </ScrollView>
+      
+      {error ? (
+        renderErrorState()
+      ) : (
+        <FlatList
+          data={notifications}
+          renderItem={renderNotificationItem}
+          keyExtractor={(item) => item.id}
+          style={styles.list}
+          contentContainerStyle={notifications.length === 0 ? styles.emptyContainer : undefined}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3B82F6']}
+              tintColor="#3B82F6"
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -227,13 +209,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
   backButton: {
-    marginRight: 16,
+    marginRight: 12,
     padding: 4,
   },
   title: {
@@ -241,8 +222,51 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1E293B',
   },
-  content: {
+  list: {
     flex: 1,
+  },
+  notificationItem: {
+    paddingHorizontal: 16,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  notificationHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  categoryBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  categoryText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  notificationDate: {
+    fontSize: 12,
+    color: '#64748B',
+  },
+  notificationContent: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+  },
+  notificationTitle: {
+    flex: 1,
+    fontSize: 16,
+    color: '#1E293B',
+    lineHeight: 22,
+  },
+  unreadDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#3B82F6',
+    marginLeft: 12,
+    marginTop: 7,
   },
   loadingContainer: {
     flex: 1,
@@ -254,11 +278,26 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#64748B',
   },
-  errorContainer: {
+  emptyContainer: {
+    flex: 1,
+  },
+  emptyState: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 32,
+    paddingHorizontal: 32,
+  },
+  emptyStateText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#64748B',
+    textAlign: 'center',
+  },
+  errorState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
   },
   errorText: {
     fontSize: 16,
@@ -272,91 +311,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
   },
-  retryText: {
+  retryButtonText: {
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '500',
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 32,
-    marginTop: 100,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-    marginTop: 16,
-  },
-  notificationsList: {
-    padding: 16,
-  },
-  notificationItem: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 1,
-    },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  notificationHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  categoryContainer: {
-    flex: 1,
-  },
-  categoryText: {
-    fontSize: 12,
-    color: '#3B82F6',
-    fontWeight: '500',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-    alignSelf: 'flex-start',
-  },
-  dateText: {
-    fontSize: 12,
-    color: '#64748B',
-    marginLeft: 8,
-  },
-  notificationContent: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  notificationTitle: {
-    flex: 1,
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#1E293B',
-    lineHeight: 20,
-  },
-  unreadIndicator: {
-    marginLeft: 8,
-    paddingTop: 2,
-  },
-  unreadDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: '#3B82F6',
-  },
-  notificationPreview: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 18,
   },
 });
