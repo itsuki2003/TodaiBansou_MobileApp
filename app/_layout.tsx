@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter, useSegments } from 'expo-router';
-import { AuthProvider, useAuth } from '../context/AuthContext';
+import { AuthProvider, useAuth } from '../contexts/AuthContext';
 import { View, ActivityIndicator } from 'react-native';
 
 // 認証が必要なルートグループ
