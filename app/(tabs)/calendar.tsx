@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -8,9 +8,43 @@ import {
   TouchableOpacity,
   Modal,
   Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { router } from 'expo-router';
+import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import ClassScheduleItem from '@/components/ui/ClassScheduleItem';
+
+// 型定義
+type Teacher = {
+  full_name: string;
+};
+
+type LessonSlot = {
+  id: string;
+  slot_date: string;
+  start_time: string;
+  end_time: string;
+  slot_type: '通常授業' | '固定面談' | '振替授業' | '追加授業';
+  status: '予定通り' | '実施済み' | '欠席' | '振替済み';
+  teacher_id: string;
+  teachers: Teacher;
+  google_meet_link: string | null;
+};
+
+type ProcessedLessonSlot = Omit<LessonSlot, 'teachers'> & {
+  teacher_name: string;
+};
+
+type CalendarData = {
+  [date: string]: ProcessedLessonSlot[];
+};
+
+// 型の変換関数
+const convertSlotType = (type: LessonSlot['slot_type']): 'lesson' | 'meeting' => {
+  return type === '固定面談' ? 'meeting' : 'lesson';
+};
 
 // Mock data for demonstration
 const MOCK_CLASSES = {
@@ -124,53 +158,207 @@ const generateMonthData = () => {
 };
 
 export default function CalendarScreen() {
-  const [month, setMonth] = useState(generateMonthData());
-  const [selectedDate, setSelectedDate] = useState('30'); // Initial selected date
-  const [selectedMonth, setSelectedMonth] = useState('May'); // For demonstration
+  const { user } = useAuth();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [calendarData, setCalendarData] = useState<CalendarData>({});
+  const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(new Date().getDate().toString());
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<any>(null);
-  
+  const [selectedClass, setSelectedClass] = useState<LessonSlot | null>(null);
+
+  // 月のデータを生成する関数
+  const generateMonthData = useCallback((date: Date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    
+    const monthData = {
+      title: `${year}年${month + 1}月`,
+      days: [] as Array<{ date: string; hasClass: boolean; disabled: boolean; }>
+    };
+
+    // 前月の日付を追加
+    const firstDayOfWeek = firstDay.getDay();
+    for (let i = 0; i < firstDayOfWeek; i++) {
+      const prevDate = new Date(year, month, -i);
+      monthData.days.unshift({
+        date: prevDate.getDate().toString(),
+        hasClass: false,
+        disabled: true,
+      });
+    }
+
+    // 当月の日付を追加
+    for (let i = 1; i <= lastDay.getDate(); i++) {
+      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
+      monthData.days.push({
+        date: i.toString(),
+        hasClass: !!calendarData[dateStr]?.length,
+        disabled: false,
+      });
+    }
+
+    // 翌月の日付を追加
+    const remainingDays = 42 - monthData.days.length; // 6行×7列のグリッド
+    for (let i = 1; i <= remainingDays; i++) {
+      monthData.days.push({
+        date: i.toString(),
+        hasClass: false,
+        disabled: true,
+      });
+    }
+
+    return monthData;
+  }, [calendarData]);
+
+  // カレンダーデータを取得する関数
+  const fetchCalendarData = useCallback(async (date: Date) => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const year = date.getFullYear();
+      const month = date.getMonth();
+      const startDate = new Date(year, month, 1);
+      const endDate = new Date(year, month + 1, 0);
+
+      // 生徒IDを取得
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('id')
+        .eq('parent_id', user?.id)
+        .single();
+
+      if (studentError) throw studentError;
+
+      // 授業スロットを取得
+      const { data: slots, error: slotsError } = await supabase
+        .from('lesson_slots')
+        .select(`
+          id,
+          slot_date,
+          start_time,
+          end_time,
+          slot_type,
+          status,
+          teacher_id,
+          google_meet_link,
+          teachers:teacher_id (
+            full_name
+          )
+        `)
+        .eq('student_id', studentData.id)
+        .gte('slot_date', startDate.toISOString().split('T')[0])
+        .lte('slot_date', endDate.toISOString().split('T')[0])
+        .order('slot_date')
+        .order('start_time');
+
+      if (slotsError) throw slotsError;
+
+      // 通常授業の回数制限を適用
+      const processedSlots = (slots as LessonSlot[]).map(slot => ({
+        ...slot,
+        teacher_name: slot.teachers.full_name,
+      }));
+
+      // 日付ごとにデータを整理
+      const groupedData = processedSlots.reduce((acc, slot) => {
+        const date = slot.slot_date;
+        if (!acc[date]) {
+          acc[date] = [];
+        }
+        acc[date].push(slot);
+        return acc;
+      }, {} as CalendarData);
+
+      setCalendarData(groupedData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
+    } finally {
+      setLoading(false);
+    }
+  }, [user?.id]);
+
+  // 初期データ取得
+  useEffect(() => {
+    fetchCalendarData(currentMonth);
+  }, [currentMonth, fetchCalendarData]);
+
+  const handlePrevMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() - 1);
+    setCurrentMonth(newDate);
+  };
+
+  const handleNextMonth = () => {
+    const newDate = new Date(currentMonth);
+    newDate.setMonth(newDate.getMonth() + 1);
+    setCurrentMonth(newDate);
+  };
+
   const handleDateSelect = (date: string, disabled: boolean) => {
     if (!disabled) {
       setSelectedDate(date);
     }
   };
-  
-  const handleClassPress = (classItem: any) => {
+
+  const handleClassPress = (classItem: LessonSlot) => {
     setSelectedClass(classItem);
-    // If class is in the future and not marked as absent
-    if (!classItem.isAbsent) {
+    if (classItem.status !== '欠席') {
       setShowAbsenceModal(true);
     }
   };
-  
+
   const handleAbsenceRequest = () => {
-    // In a real app, this would send the absence request to the backend
     setShowAbsenceModal(false);
-    // For demo purposes, mark the class as absent
     if (selectedClass) {
-      // This would update the backend in a real app
-      alert('欠席連絡を受け付けました');
+      router.push({
+        pathname: '/(tabs)/absence-request' as any,
+        params: { lessonId: selectedClass.id }
+      });
     }
   };
-  
-  const handlePrevMonth = () => {
-    // In a real app, this would fetch the previous month's data
-    alert('前月のデータを表示します');
+
+  const handleAddClassRequest = () => {
+    router.push('/(tabs)/additional-lesson-request' as any);
   };
-  
-  const handleNextMonth = () => {
-    // In a real app, this would fetch the next month's data
-    alert('翌月のデータを表示します');
-  };
-  
-  // Get classes for the selected date
+
+  // 選択された日付の予定を取得
   const getClassesForSelectedDate = () => {
-    const date = selectedMonth === 'May' 
-      ? `2023-05-${selectedDate.padStart(2, '0')}` 
-      : `2023-06-${selectedDate.padStart(2, '0')}`;
-    return MOCK_CLASSES[date as keyof typeof MOCK_CLASSES] || [];
+    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${selectedDate.padStart(2, '0')}`;
+    return calendarData[dateStr] || [];
   };
+
+  const month = generateMonthData(currentMonth);
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>データを読み込み中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={() => fetchCalendarData(currentMonth)}
+          >
+            <Text style={styles.retryButtonText}>再試行</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -234,7 +422,7 @@ export default function CalendarScreen() {
       <View style={styles.scheduleHeader}>
         <CalendarIcon size={18} color="#3B82F6" />
         <Text style={styles.scheduleTitle}>
-          {selectedMonth === 'May' ? '5' : '6'}月{selectedDate}日の予定
+          {currentMonth.toLocaleString('default', { month: 'long' })} {selectedDate}日の予定
         </Text>
       </View>
       
@@ -243,13 +431,13 @@ export default function CalendarScreen() {
           getClassesForSelectedDate().map((classItem) => (
             <ClassScheduleItem
               key={classItem.id}
-              type={classItem.type}
-              startTime={classItem.startTime}
-              endTime={classItem.endTime}
-              teacherName={classItem.teacherName}
-              isAbsent={classItem.isAbsent}
-              isTransferred={classItem.isTransferred}
-              isAdditional={classItem.isAdditional}
+              type={convertSlotType(classItem.slot_type)}
+              startTime={classItem.start_time}
+              endTime={classItem.end_time}
+              teacherName={classItem.teacher_name}
+              isAbsent={classItem.status === '欠席'}
+              isTransferred={classItem.slot_type === '振替授業'}
+              isAdditional={classItem.slot_type === '追加授業'}
               onPress={() => handleClassPress(classItem)}
             />
           ))
@@ -259,7 +447,7 @@ export default function CalendarScreen() {
           </Text>
         )}
         
-        <TouchableOpacity style={styles.addClassButton}>
+        <TouchableOpacity style={styles.addClassButton} onPress={handleAddClassRequest}>
           <Text style={styles.addClassButtonText}>
             ＋ 追加授業を申請する
           </Text>
@@ -285,10 +473,10 @@ export default function CalendarScreen() {
                 
                 <View style={styles.classDetails}>
                   <Text style={styles.classDetailText}>
-                    日時: {selectedMonth === 'May' ? '5' : '6'}月{selectedDate}日 {selectedClass.startTime}～{selectedClass.endTime}
+                    日時: {currentMonth.toLocaleString('default', { month: 'long' })} {selectedDate}日 {selectedClass.start_time}～{selectedClass.end_time}
                   </Text>
                   <Text style={styles.classDetailText}>
-                    担当: {selectedClass.teacherName}
+                    担当: {selectedClass.teacher_name}
                   </Text>
                 </View>
                 
@@ -512,6 +700,35 @@ const styles = StyleSheet.create({
     backgroundColor: '#EF4444',
   },
   confirmButtonText: {
+    color: '#FFFFFF',
+    fontWeight: '500',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: '#3B82F6',
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  errorText: {
+    color: '#EF4444',
+    marginBottom: 16,
+  },
+  retryButton: {
+    backgroundColor: '#3B82F6',
+    padding: 12,
+    borderRadius: 8,
+  },
+  retryButtonText: {
     color: '#FFFFFF',
     fontWeight: '500',
   },
