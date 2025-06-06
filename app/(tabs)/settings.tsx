@@ -15,9 +15,11 @@ import {
   Shield, 
   LogOut,
   ChevronRight,
+  Users,
 } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RecentNotification {
   id: string;
@@ -28,6 +30,7 @@ interface RecentNotification {
 }
 
 export default function SettingsScreen() {
+  const { students, selectedStudent, selectStudent, clearStudentSelection } = useAuth();
   const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   
@@ -44,7 +47,7 @@ export default function SettingsScreen() {
             name
           )
         `)
-        .eq('status', 'published')
+        .eq('status', '配信済み')
         .order('publish_timestamp', { ascending: false })
         .limit(3);
 
@@ -81,6 +84,30 @@ export default function SettingsScreen() {
   const handleProfile = () => {
     // Navigate to profile screen
     Alert.alert('プロフィール画面へ移動します');
+  };
+
+  const handleStudentSwitch = () => {
+    if (students.length > 1) {
+      router.push('/student-selection');
+    }
+  };
+
+  const handleClearSelection = () => {
+    Alert.alert(
+      '生徒選択をリセット',
+      '保存された生徒選択をクリアして、次回ログイン時に選択画面を表示しますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        { 
+          text: 'リセット', 
+          style: 'destructive',
+          onPress: () => {
+            clearStudentSelection();
+            Alert.alert('完了', '生徒選択がリセットされました。');
+          }
+        }
+      ]
+    );
   };
   
   const handleTerms = () => {
@@ -119,7 +146,7 @@ export default function SettingsScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>東大伴走</Text>
-        <Text style={styles.title}>おしらせ・設定</Text>
+        <Text style={styles.title}>設定</Text>
       </View>
       
       <ScrollView style={styles.content}>
@@ -150,6 +177,37 @@ export default function SettingsScreen() {
             <Text style={styles.menuText}>プロフィール</Text>
             <ChevronRight size={18} color="#94A3B8" />
           </TouchableOpacity>
+
+          {students.length > 1 && (
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={handleStudentSwitch}
+            >
+              <View style={styles.menuIconContainer}>
+                <Users size={20} color="#3B82F6" />
+              </View>
+              <View style={styles.studentSwitchContainer}>
+                <Text style={styles.menuText}>生徒の切り替え</Text>
+                <Text style={styles.currentStudentText}>
+                  現在: {selectedStudent?.full_name || '未選択'}
+                </Text>
+              </View>
+              <ChevronRight size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
+
+          {students.length > 1 && (
+            <TouchableOpacity 
+              style={styles.menuItem}
+              onPress={handleClearSelection}
+            >
+              <View style={styles.menuIconContainer}>
+                <Users size={20} color="#EF4444" />
+              </View>
+              <Text style={[styles.menuText, { color: '#EF4444' }]}>生徒選択をリセット</Text>
+              <ChevronRight size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          )}
           
           <TouchableOpacity 
             style={styles.menuItem}
@@ -241,6 +299,7 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
@@ -251,7 +310,8 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
     color: '#3B82F6',
-    marginRight: 8,
+    position: 'absolute',
+    left: 16,
   },
   title: {
     fontSize: 20,
@@ -373,5 +433,13 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     paddingVertical: 20,
+  },
+  studentSwitchContainer: {
+    flex: 1,
+  },
+  currentStudentText: {
+    fontSize: 12,
+    color: '#64748B',
+    marginTop: 2,
   },
 });

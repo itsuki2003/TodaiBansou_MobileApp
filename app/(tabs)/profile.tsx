@@ -10,6 +10,7 @@ import {
 import { ChevronLeft } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 
 // 型定義
 type Student = {
@@ -42,6 +43,7 @@ type ProfileData = {
 };
 
 export default function ProfileScreen() {
+  const { selectedStudent } = useAuth();
   const [profileData, setProfileData] = useState<ProfileData>({
     student: null,
     teachers: {
@@ -53,32 +55,30 @@ export default function ProfileScreen() {
   });
 
   useEffect(() => {
-    fetchProfileData();
-  }, []);
+    if (selectedStudent) {
+      fetchProfileData();
+    }
+  }, [selectedStudent]);
 
   const fetchProfileData = async () => {
     try {
-      // 現在のユーザーIDを取得
-      const { data: { user }, error: authError } = await supabase.auth.getUser();
-      if (authError) throw authError;
-      if (!user) throw new Error('ユーザーが見つかりません');
+      if (!selectedStudent) {
+        throw new Error('生徒が選択されていません');
+      }
 
-      // 生徒情報を取得
-      const { data: students, error: studentsError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('parent_id', user.id)
-        .limit(1)
-        .single();
-
-      if (studentsError) throw studentsError;
-      if (!students) throw new Error('生徒情報が見つかりません');
+      // 選択された生徒の情報を使用
+      const studentInfo = {
+        id: selectedStudent.id,
+        full_name: selectedStudent.full_name,
+        grade: selectedStudent.grade || '',
+        school_attended: '', // 必要に応じて追加のデータを取得
+      };
 
       // 担当講師情報を取得
       const { data: assignments, error: assignmentsError } = await supabase
         .from('assignments')
         .select('*, teachers:teacher_id(*)')
-        .eq('student_id', students.id);
+        .eq('student_id', selectedStudent.id);
 
       if (assignmentsError) throw assignmentsError;
 
@@ -87,7 +87,7 @@ export default function ProfileScreen() {
       const classTeacher = assignments?.find((a: Assignment) => a.role === 'class')?.teachers;
 
       setProfileData({
-        student: students,
+        student: studentInfo,
         teachers: {
           interview: interviewTeacher?.full_name || '未設定',
           class: classTeacher?.full_name || '未設定',

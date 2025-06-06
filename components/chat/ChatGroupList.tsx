@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
@@ -104,36 +104,68 @@ export default function ChatGroupList() {
   }
 
   return (
-    <FlatList
-      data={chatGroups}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => (
-        <TouchableOpacity
-          style={styles.chatGroupItem}
-          onPress={() => handleChatGroupPress(item.id)}
-        >
-          <View style={styles.chatGroupInfo}>
-            <Text style={styles.studentName}>{item.student.full_name}</Text>
-            <Text style={styles.groupName}>{item.group_name}</Text>
-          </View>
-          {item.last_message_at && (
-            <Text style={styles.lastMessageTime}>
-              {new Date(item.last_message_at).toLocaleString('ja-JP', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-              })}
-            </Text>
-          )}
-        </TouchableOpacity>
-      )}
-      contentContainerStyle={styles.listContent}
-    />
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <Text style={styles.logo}>東大伴走</Text>
+        <Text style={styles.headerTitle}>チャット</Text>
+      </View>
+      
+      <FlatList
+        data={chatGroups}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+            style={styles.chatGroupItem}
+            onPress={() => handleChatGroupPress(item.id)}
+          >
+            <View style={styles.chatGroupInfo}>
+              <Text style={styles.studentName}>{item.student.full_name}</Text>
+              <Text style={styles.groupName}>{item.group_name}</Text>
+            </View>
+            {item.last_message_at && (
+              <Text style={styles.lastMessageTime}>
+                {new Date(item.last_message_at).toLocaleString('ja-JP', {
+                  month: 'numeric',
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
+              </Text>
+            )}
+          </TouchableOpacity>
+        )}
+        contentContainerStyle={styles.listContent}
+      />
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  logo: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3B82F6',
+    marginRight: 8,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
   centered: {
     flex: 1,
     justifyContent: 'center',

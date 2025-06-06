@@ -45,7 +45,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="settings"
         options={{
-          title: 'おしらせ',
+          title: '設定',
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} />
           ),

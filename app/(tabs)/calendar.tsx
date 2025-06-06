@@ -158,7 +158,7 @@ const generateMonthData = () => {
 };
 
 export default function CalendarScreen() {
-  const { user } = useAuth();
+  const { user, selectedStudent } = useAuth();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [calendarData, setCalendarData] = useState<CalendarData>({});
@@ -219,19 +219,17 @@ export default function CalendarScreen() {
       setLoading(true);
       setError(null);
 
+      if (!selectedStudent) {
+        console.log('No student selected for calendar');
+        setCalendarData({});
+        setLoading(false);
+        return;
+      }
+
       const year = date.getFullYear();
       const month = date.getMonth();
       const startDate = new Date(year, month, 1);
       const endDate = new Date(year, month + 1, 0);
-
-      // 生徒IDを取得
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('parent_id', user?.id)
-        .single();
-
-      if (studentError) throw studentError;
 
       // 授業スロットを取得
       const { data: slots, error: slotsError } = await supabase
@@ -249,7 +247,7 @@ export default function CalendarScreen() {
             full_name
           )
         `)
-        .eq('student_id', studentData.id)
+        .eq('student_id', selectedStudent.id)
         .gte('slot_date', startDate.toISOString().split('T')[0])
         .lte('slot_date', endDate.toISOString().split('T')[0])
         .order('slot_date')
@@ -279,12 +277,14 @@ export default function CalendarScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user?.id]);
+  }, [selectedStudent?.id]);
 
   // 初期データ取得
   useEffect(() => {
-    fetchCalendarData(currentMonth);
-  }, [currentMonth, fetchCalendarData]);
+    if (selectedStudent) {
+      fetchCalendarData(currentMonth);
+    }
+  }, [currentMonth, fetchCalendarData, selectedStudent]);
 
   const handlePrevMonth = () => {
     const newDate = new Date(currentMonth);
@@ -363,6 +363,7 @@ export default function CalendarScreen() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
+        <Text style={styles.logo}>東大伴走</Text>
         <Text style={styles.title}>授業予定</Text>
       </View>
       
@@ -513,9 +514,22 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  logo: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3B82F6',
+    position: 'absolute',
+    left: 16,
   },
   title: {
     fontSize: 20,

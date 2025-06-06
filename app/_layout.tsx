@@ -10,33 +10,53 @@ const AUTH_GROUP = '(auth)';
 const PROTECTED_GROUP = '(tabs)';
 
 function RootLayoutNav() {
-  const { session, isLoading, isFirstTimeUser, userRoleLoading } = useAuth();
+  const { session, isLoading, isFirstTimeUser, userRoleLoading, needsStudentSelection } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading || userRoleLoading) return;
+    if (isLoading || userRoleLoading) {
+      console.log('🔄 _layout: Still loading...', { isLoading, userRoleLoading });
+      return;
+    }
 
     const inAuthGroup = segments[0] === AUTH_GROUP;
     const inProtectedGroup = segments[0] === PROTECTED_GROUP;
     const inStudentRegistration = segments[0] === 'student-registration';
+    const inStudentSelection = segments[0] === 'student-selection';
+
+    console.log('🧭 _layout: Navigation check', {
+      session: !!session,
+      isFirstTimeUser,
+      needsStudentSelection,
+      segments: segments[0],
+      inAuthGroup,
+      inProtectedGroup,
+      inStudentRegistration,
+      inStudentSelection
+    });
 
     if (session) {
       if (isFirstTimeUser && !inStudentRegistration) {
-        // 初回ユーザーの場合、生徒情報登録画面にリダイレクト
+        console.log('➡️ _layout: Redirecting to student registration (first time user)');
         router.replace('/student-registration');
-      } else if (!isFirstTimeUser && inAuthGroup) {
-        // 認証済みユーザーが認証画面にアクセスした場合、メイン画面にリダイレクト
+      } else if (needsStudentSelection && !inStudentSelection) {
+        console.log('➡️ _layout: Redirecting to student selection (multiple students)');
+        router.replace('/student-selection');
+      } else if (!isFirstTimeUser && !needsStudentSelection && inAuthGroup) {
+        console.log('➡️ _layout: Redirecting to main app (existing user in auth group)');
         router.replace('/(tabs)');
       } else if (isFirstTimeUser && inAuthGroup) {
-        // 初回ユーザーが認証画面にアクセスした場合、生徒情報登録画面にリダイレクト
+        console.log('➡️ _layout: Redirecting to student registration (first time user in auth group)');
         router.replace('/student-registration');
+      } else {
+        console.log('✅ _layout: No redirect needed');
       }
-    } else if (!session && (inProtectedGroup || inStudentRegistration)) {
-      // 未認証ユーザーが保護された画面にアクセスした場合、ログイン画面にリダイレクト
+    } else if (!session && (inProtectedGroup || inStudentRegistration || inStudentSelection)) {
+      console.log('➡️ _layout: Redirecting to login (no session)');
       router.replace('/login');
     }
-  }, [session, segments, isLoading, isFirstTimeUser, userRoleLoading]);
+  }, [session, segments, isLoading, isFirstTimeUser, userRoleLoading, needsStudentSelection]);
 
   if (isLoading || userRoleLoading) {
     return (
@@ -55,6 +75,7 @@ function RootLayoutNav() {
       <Stack.Screen name="chat/[chatGroupId]" options={{ headerShown: false }} />
       <Stack.Screen name="chat/student" options={{ headerShown: false }} />
       <Stack.Screen name="student-registration" options={{ headerShown: false }} />
+      <Stack.Screen name="student-selection" options={{ headerShown: false }} />
     </Stack>
   );
 }

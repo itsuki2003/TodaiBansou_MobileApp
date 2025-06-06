@@ -8,8 +8,10 @@ import {
   Alert,
   RefreshControl,
   TouchableOpacity,
-  SafeAreaView, // SafeAreaViewを追加
+  SafeAreaView,
+  Modal,
 } from 'react-native';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
 import { supabase } from '@/lib/supabaseClient';
 import TaskItem from '@/components/ui/TaskItem';
 import TeacherCommentComponent from '@/components/ui/TeacherComment';
@@ -49,13 +51,15 @@ const getWeekStartDate = (date: Date) => {
 };
 
 export default function HomeScreen() {
-  const { user, userRole, userRoleLoading } = useAuth();
+  const { user, userRole, userRoleLoading, selectedStudent } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [teacherComment, setTeacherComment] = useState<TeacherComment | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [currentStudentId, setCurrentStudentId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // アニメーション関連のstate (TaskItem側で個別管理も検討)
   const [celebrateTaskId, setCelebrateTaskId] = useState<string | null>(null);
@@ -63,6 +67,12 @@ export default function HomeScreen() {
 
   const fetchTodayData = useCallback(async () => {
     try {
+      console.log('🚀 fetchTodayData: Starting...', {
+        user: !!user,
+        userRole,
+        selectedStudent: selectedStudent ? selectedStudent.full_name : 'null'
+      });
+      
       setError(null);
       setLoading(true);
 
@@ -73,33 +83,46 @@ export default function HomeScreen() {
 
       // ユーザーロールが学生でない場合は何もしない
       if (userRole !== 'student') {
+        console.log('⏸️ fetchTodayData: User role is not student:', userRole);
         setTasks([]);
         setTeacherComment(null);
         setLoading(false);
         return;
       }
 
-      // ログインユーザーに紐づく生徒IDを取得 (1保護者1生徒をまず想定)
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', user.id) // studentsテーブルのuser_id（保護者のauth.uid）で検索
-        .single(); // 1保護者1生徒を想定、複数生徒の場合は .limit(1).single() や別途選択ロジック
+      // 選択された生徒の情報を確認
+      if (!selectedStudent) {
+        console.log('⏸️ fetchTodayData: No student selected yet');
+        setTasks([]);
+        setTeacherComment(null);
+        setLoading(false);
+        return;
+      }
 
-      if (studentError) throw new Error(`生徒情報の取得に失敗: ${studentError.message}`);
-      if (!studentData) throw new Error('生徒情報が見つかりません。');
-      setCurrentStudentId(studentData.id);
+      console.log('✅ fetchTodayData: Using selected student:', selectedStudent.full_name, 'ID:', selectedStudent.id);
+      setCurrentStudentId(selectedStudent.id);
 
-      const todayString = getTodayDateString();
-      const weekStartDate = getWeekStartDate(new Date());
+      const dateString = selectedDate.toISOString().split('T')[0];
+      const weekStartDate = getWeekStartDate(selectedDate);
+
+      console.log('📅 fetchTodayData: Date info', {
+        dateString,
+        weekStartDate,
+        studentId: selectedStudent.id
+      });
 
       // 今日の日付が含まれる週のtodo_listを取得
       const { data: todoList, error: todoListError } = await supabase
         .from('todo_lists')
         .select('id, status') // statusも取得して公開済みか確認
-        .eq('student_id', studentData.id)
+        .eq('student_id', selectedStudent.id)
         .eq('target_week_start_date', weekStartDate)
         .single();
+
+      console.log('📋 fetchTodayData: Todo list query result', {
+        todoList,
+        todoListError
+      });
 
       if (todoListError) {
         // PGRST116はレコードが見つからない場合のエラーコード
@@ -131,31 +154,60 @@ export default function HomeScreen() {
       }
 
 
+      // デバッグ: このtodo_listに含まれる全てのタスクを確認
+      const { data: allTasks, error: allTasksError } = await supabase
+        .from('tasks')
+        .select('id, content, target_date, is_completed')
+        .eq('todo_list_id', todoList.id);
+
+      console.log('🔍 fetchTodayData: All tasks in this todo_list', {
+        allTasks,
+        allTasksError,
+        todoListId: todoList.id
+      });
+
       // 今日のタスクを取得
       const { data: fetchedTasks, error: tasksError } = await supabase
         .from('tasks')
         .select('id, content, is_completed, todo_list_id') // contentとis_completedを明示
         .eq('todo_list_id', todoList.id)
-        .eq('target_date', todayString) // tasksテーブルのtarget_dateで今日の日付を検索
+        .eq('target_date', dateString) // tasksテーブルのtarget_dateで選択された日付を検索
         .order('display_order'); // display_orderで並び替え
 
+      console.log('📝 fetchTodayData: Tasks query result', {
+        fetchedTasks,
+        tasksError,
+        taskCount: fetchedTasks?.length || 0,
+        searchingForDate: dateString
+      });
+
       if (tasksError) throw new Error(`タスクの取得に失敗: ${tasksError.message}`);
+      
       setTasks(fetchedTasks || []);
+      
+      console.log('✅ fetchTodayData: Tasks set successfully, count:', (fetchedTasks?.length || 0) + (allTasks?.length || 0));
 
       // 今日の講師コメントを取得
       const { data: comment, error: commentError } = await supabase
         .from('teacher_comments')
         .select('id, comment_content, todo_list_id, target_date, teacher_id, created_at') // comment_contentを明示
         .eq('todo_list_id', todoList.id)
-        .eq('target_date', todayString)
+        .eq('target_date', dateString)
         .order('created_at', { ascending: false }) // 最新のコメントを優先する場合
         .limit(1) // 1日に1コメントを想定、または最新1件
         .single(); // 1件取得を期待、なければエラーかnull
+
+      console.log('💬 fetchTodayData: Teacher comment query result', {
+        comment,
+        commentError
+      });
 
       if (commentError && commentError.code !== 'PGRST116') { // PGRST116 は結果0行のエラー
         throw new Error(`講師コメントの取得に失敗: ${commentError.message}`);
       }
       setTeacherComment(comment as TeacherComment | null); // 型アサーション
+      
+      console.log('🎉 fetchTodayData: All data fetched successfully!');
 
     } catch (err: any) {
       const errorMessage = err.message || '予期せぬエラーが発生しました';
@@ -166,12 +218,22 @@ export default function HomeScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user, userRole]);
+  }, [user, userRole, selectedStudent, selectedDate]);
 
   useEffect(() => {
-    // ユーザーロールのローディングが完了し、かつユーザーが存在する場合にのみデータを取得
-    if (!userRoleLoading && user) {
+    console.log('🔄 index.tsx: useEffect triggered', {
+      userRoleLoading,
+      user: !!user,
+      selectedStudent: selectedStudent ? selectedStudent.full_name : 'null',
+      userRole
+    });
+    
+    // ユーザーロールのローディングが完了し、かつユーザーが存在し、生徒が選択されている場合にのみデータを取得
+    if (!userRoleLoading && user && selectedStudent) {
+      console.log('✅ index.tsx: Conditions met, calling fetchTodayData');
       fetchTodayData();
+    } else {
+      console.log('⏸️ index.tsx: Conditions not met, skipping fetchTodayData');
     }
     // Supabaseのリアルタイムリスナーを設定することも検討 (オプション)
     // 例: tasksテーブルの変更をリッスン
@@ -184,7 +246,7 @@ export default function HomeScreen() {
     // return () => {
     //   supabase.removeChannel(taskListener);
     // };
-  }, [fetchTodayData, userRoleLoading, user]);
+  }, [fetchTodayData, userRoleLoading, user, selectedStudent, selectedDate]);
 
   const handleTaskToggle = async (taskId: string) => { // taskIdをstringに
     const originalTasks = [...tasks];
@@ -229,6 +291,29 @@ export default function HomeScreen() {
     setRefreshing(true);
     fetchTodayData();
   }, [fetchTodayData]);
+
+  // 日付操作関数
+  const goToPreviousDay = () => {
+    const prevDay = new Date(selectedDate);
+    prevDay.setDate(prevDay.getDate() - 1);
+    setSelectedDate(prevDay);
+  };
+
+  const goToNextDay = () => {
+    const nextDay = new Date(selectedDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    setSelectedDate(nextDay);
+  };
+
+  const goToToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  // より確実な日付比較
+  const today = new Date();
+  const isToday = selectedDate.getFullYear() === today.getFullYear() && 
+                  selectedDate.getMonth() === today.getMonth() && 
+                  selectedDate.getDate() === today.getDate();
 
   // タスク完了時のメッセージ (TaskItem側で表示するかHomeScreenでOverlay表示するか)
   const getCelebrationMessage = () => {
@@ -277,9 +362,43 @@ export default function HomeScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.logo}>東大伴走</Text>
-        {/* DateHeaderコンポーネントをここに配置するか、ScrollViewの外に配置するか検討 */}
+        <Text style={styles.headerTitle}>ホーム</Text>
       </View>
-      <DateHeader date={new Date()} /> 
+      
+      {/* 日付選択セクション */}
+      <View style={styles.dateSection}>
+        <TouchableOpacity onPress={goToPreviousDay} style={styles.dateButton}>
+          <ChevronLeft size={24} color="#3B82F6" />
+        </TouchableOpacity>
+        
+        <View style={styles.dateCenterContainer}>
+          <TouchableOpacity onPress={() => setShowDatePicker(true)} style={styles.dateContainer}>
+            <Calendar size={16} color="#3B82F6" />
+            <Text style={styles.dateText}>
+              {selectedDate.toLocaleDateString('ja-JP', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                weekday: 'short'
+              })}
+            </Text>
+          </TouchableOpacity>
+          {isToday && (
+            <View style={styles.todayIndicator}>
+              <Text style={styles.todayIndicatorText}>今日</Text>
+            </View>
+          )}
+          {!isToday && (
+            <TouchableOpacity onPress={goToToday} style={styles.todayButton}>
+              <Text style={styles.todayButtonText}>今日へ</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+        
+        <TouchableOpacity onPress={goToNextDay} style={styles.dateButton}>
+          <ChevronRight size={24} color="#3B82F6" />
+        </TouchableOpacity>
+      </View> 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -293,9 +412,13 @@ export default function HomeScreen() {
         }
       >
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>今日のやることリスト</Text>
+          <Text style={styles.sectionTitle}>
+            {isToday ? '今日のやることリスト' : 'やることリスト'}
+          </Text>
           {tasks.length === 0 && !loading && !error && ( // ローディング中でもエラーでもないのにタスク0の場合
-            <Text style={styles.emptyText}>今日のタスクはありません</Text>
+            <Text style={styles.emptyText}>
+              {isToday ? '今日のタスクはありません' : 'この日のタスクはありません'}
+            </Text>
           )}
           {tasks.map(task => (
             <TaskItem
@@ -329,19 +452,27 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF', // 全体の背景色
   },
   header: {
-    paddingHorizontal: 16,
-    paddingTop: 16, // SafeAreaViewを使うので paddingTop を調整
-    paddingBottom: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF', // ヘッダーの背景色
-    // borderBottomWidth: 1, // 必要であれば境界線
-    // borderBottomColor: '#E2E8F0',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
   },
   logo: {
-    fontSize: 18, // 要件定義に合わせて調整
+    fontSize: 16,
     fontWeight: '700',
-    color: '#3B82F6', // ブランドカラー
+    color: '#3B82F6',
+    position: 'absolute',
+    left: 16,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
   },
   scrollView: {
     flex: 1,
@@ -384,7 +515,8 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    marginBottom: 24, // セクション間のマージン調整
+    marginTop: 16,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 20, // 少し大きめに
@@ -398,5 +530,69 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     paddingVertical: 24, // 上下にもパディング
     fontStyle: 'italic',
+  },
+  dateSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  dateButton: {
+    padding: 8,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 1,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  dateCenterContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+  },
+  dateText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginLeft: 8,
+  },
+  todayButton: {
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#3B82F6',
+    borderRadius: 12,
+  },
+  todayButtonText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  todayIndicator: {
+    marginLeft: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    backgroundColor: '#10B981',
+    borderRadius: 12,
+  },
+  todayIndicatorText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

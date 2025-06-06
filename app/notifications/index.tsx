@@ -16,7 +16,6 @@ import { supabase } from '@/lib/supabaseClient';
 interface NotificationCategory {
   id: string;
   name: string;
-  color: string;
 }
 
 interface Notification {
@@ -54,11 +53,10 @@ export default function NotificationListScreen() {
           target_audience,
           notification_categories:category_id (
             id,
-            name,
-            color
+            name
           )
         `)
-        .eq('status', 'published')
+        .eq('status', '配信済み')
         .order('publish_timestamp', { ascending: false });
 
       if (notificationsError) {

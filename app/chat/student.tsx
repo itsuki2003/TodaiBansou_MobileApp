@@ -7,47 +7,31 @@ import ChatRoom from '@/components/chat/ChatRoom';
 
 export default function StudentChatScreen() {
   const router = useRouter();
-  const { user, userRole, userRoleLoading } = useAuth();
+  const { user, userRole, userRoleLoading, selectedStudent } = useAuth();
   const [chatGroupId, setChatGroupId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userRoleLoading && user && userRole === 'student') {
+    if (!userRoleLoading && user && userRole === 'student' && selectedStudent) {
       fetchStudentChatGroup();
     } else if (!userRoleLoading && (!user || userRole !== 'student')) {
       router.replace('/');
     }
-  }, [user, userRole, userRoleLoading]);
+  }, [user, userRole, userRoleLoading, selectedStudent]);
 
   const fetchStudentChatGroup = async () => {
-    if (!user || userRole !== 'student') return;
+    if (!user || userRole !== 'student' || !selectedStudent) return;
 
     try {
       setLoading(true);
       setError(null);
 
-      // まず、ユーザーに紐づく生徒IDを取得
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('id')
-        .eq('user_id', user.id)
-        .single();
-
-      if (studentError) {
-        if (studentError.code === 'PGRST116') {
-          setError('生徒情報が登録されていません。');
-        } else {
-          throw studentError;
-        }
-        return;
-      }
-
       // 生徒のチャットグループを取得
       const { data, error: queryError } = await supabase
         .from('chat_groups')
         .select('id')
-        .eq('student_id', studentData.id)
+        .eq('student_id', selectedStudent.id)
         .single();
 
       if (queryError) {

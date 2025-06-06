@@ -18,7 +18,6 @@ import Markdown from 'react-native-markdown-display';
 interface NotificationCategory {
   id: string;
   name: string;
-  color: string;
 }
 
 interface NotificationDetail {
@@ -61,8 +60,7 @@ export default function NotificationDetailScreen() {
           target_audience,
           notification_categories:category_id (
             id,
-            name,
-            color
+            name
           )
         `)
         .eq('id', notificationId)

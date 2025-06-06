@@ -10,8 +10,10 @@ import {
   Platform,
   Image,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
-import { Send, Paperclip, X } from 'lucide-react-native';
+import { Send, Paperclip, X, ArrowLeft } from 'lucide-react-native';
+import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import ChatMessage from '@/components/ui/ChatMessage';
@@ -93,15 +95,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           sent_at,
           sender_user_id,
           sender_role,
-          attachment_info,
-          students:students!chat_messages_sender_user_id_fkey (
-            full_name,
-            avatar_url
-          ),
-          teachers:teachers!chat_messages_sender_user_id_fkey (
-            full_name,
-            avatar_url
-          )
+          attachment_info
         `)
         .eq('chat_group_id', chatGroupId)
         .order('sent_at', { ascending: true })
@@ -114,12 +108,8 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         content: msg.content,
         sender: {
           id: msg.sender_user_id,
-          name: msg.sender_role === 'student' 
-            ? msg.students?.full_name || '不明'
-            : msg.teachers?.full_name || '不明',
-          avatar: msg.sender_role === 'student'
-            ? msg.students?.avatar_url
-            : msg.teachers?.avatar_url,
+          name: msg.sender_role === 'student' ? '生徒' : '講師',
+          avatar: null, // 暫定的にnull
         },
         timestamp: new Date(msg.sent_at),
         isCurrentUser: msg.sender_user_id === user?.id,
@@ -149,20 +139,16 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         async (payload) => {
           const newMessage = payload.new;
           
-          // 送信者の情報を取得
-          const { data: senderData } = await supabase
-            .from(newMessage.sender_role === 'student' ? 'students' : 'teachers')
-            .select('full_name, avatar_url')
-            .eq('user_id', newMessage.sender_user_id)
-            .single();
+          // 送信者の情報（暫定）
+          const senderName = newMessage.sender_role === 'student' ? '生徒' : '講師';
 
           const message: Message = {
             id: newMessage.id,
             content: newMessage.content,
             sender: {
               id: newMessage.sender_user_id,
-              name: senderData?.full_name || '不明',
-              avatar: senderData?.avatar_url,
+              name: senderName,
+              avatar: null,
             },
             timestamp: new Date(newMessage.sent_at),
             isCurrentUser: newMessage.sender_user_id === user?.id,
@@ -299,16 +285,24 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
   }
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
-    >
-      <ScrollView
-        ref={scrollViewRef}
-        style={styles.messagesContainer}
-        contentContainerStyle={styles.messagesContent}
+    <SafeAreaView style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+          <ArrowLeft size={24} color="#1E293B" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>チャット</Text>
+      </View>
+      
+      <KeyboardAvoidingView
+        style={styles.chatContainer}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
+        <ScrollView
+          ref={scrollViewRef}
+          style={styles.messagesContainer}
+          contentContainerStyle={styles.messagesContent}
+        >
         {messages.map((message) => (
           <ChatMessage
             key={message.id}
@@ -379,7 +373,8 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           )}
         </TouchableOpacity>
       </View>
-    </KeyboardAvoidingView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -387,6 +382,29 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    backgroundColor: '#FFFFFF',
+  },
+  backButton: {
+    position: 'absolute',
+    left: 16,
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  chatContainer: {
+    flex: 1,
   },
   centered: {
     flex: 1,
