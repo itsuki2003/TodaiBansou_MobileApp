@@ -1,18 +1,57 @@
 'use client';
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
 import { useState } from "react";
+import { LogoutConfirmDialog } from "@/components/ui/common/LogoutConfirmDialog";
 
 export default function Header() {
-  const { user, signOut } = useAuth();
+  const router = useRouter();
+  const { user, signOut, signOutLoading, signOutError, clearSignOutError } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
+  // ログアウトボタンクリック時（確認ダイアログを表示）
+  const handleSignOutClick = () => {
+    setIsMenuOpen(false);
+    setIsLogoutDialogOpen(true);
+  };
+
+  // 実際のログアウト処理（確認ダイアログから呼び出される）
   const handleSignOut = async () => {
     try {
+      // エラーがある場合はクリア
+      if (signOutError) {
+        clearSignOutError();
+      }
+
+      console.log('🔓 Header: ログアウト処理開始');
       await signOut();
+      
+      console.log('🔓 Header: ログアウト成功、リダイレクト開始');
+      
+      // ログアウト成功時はログインページにリダイレクト
+      router.push('/login');
+      
+      // ダイアログを閉じる
+      setIsLogoutDialogOpen(false);
+      
     } catch (error) {
-      console.error('Sign out error:', error);
+      console.error('🔓 Header: ログアウトエラー:', error);
+      // エラーは AuthContext で管理されるため、ここでは何もしない
+      // ダイアログは開いたままにして、ユーザーが再試行できるようにする
+    }
+  };
+
+  // ログアウトダイアログを閉じる
+  const handleCloseLogoutDialog = () => {
+    if (!signOutLoading) {
+      setIsLogoutDialogOpen(false);
+      // エラーがある場合はクリア
+      if (signOutError) {
+        clearSignOutError();
+      }
     }
   };
 
@@ -96,7 +135,7 @@ export default function Header() {
                   <div className="text-xs text-gray-500">{user.email}</div>
                 </div>
                 <button
-                  onClick={handleSignOut}
+                  onClick={handleSignOutClick}
                   className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   ログアウト
@@ -148,6 +187,16 @@ export default function Header() {
           </div>
         )}
       </div>
+      
+      {/* ログアウト確認ダイアログ */}
+      <LogoutConfirmDialog
+        isOpen={isLogoutDialogOpen}
+        onClose={handleCloseLogoutDialog}
+        onConfirm={handleSignOut}
+        loading={signOutLoading}
+        error={signOutError}
+        userName={user.profile?.full_name}
+      />
     </header>
   );
 }

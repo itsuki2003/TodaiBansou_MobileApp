@@ -10,7 +10,8 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
-  const { signIn, user, loading: authLoading } = useAuth();
+  const [redirecting, setRedirecting] = useState(false);
+  const { signIn, user, loading: authLoading, mounted: authMounted } = useAuth();
   const router = useRouter();
 
   // クライアントサイドでマウント後に認証状態を確認
@@ -18,40 +19,42 @@ export default function LoginPage() {
     setMounted(true);
   }, []);
 
+  // ユーザーが存在する場合は常にリダイレクト（既存ログイン済み・新規ログイン成功両方対応）
   useEffect(() => {
-    if (mounted && user && !authLoading) {
-      console.log('🔐 ユーザーが既にログイン済み、リダイレクト中...');
-      // 3秒後に自動リダイレクト
-      const timer = setTimeout(() => {
-        window.location.href = '/students';
-      }, 3000);
-
-      return () => clearTimeout(timer);
+    if (mounted && authMounted && user && !redirecting && !authLoading) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 ユーザー存在確認、リダイレクト開始');
+      }
+      setRedirecting(true);
+      
+      // わずかな遅延を入れて確実にリダイレクト
+      setTimeout(() => {
+        router.push('/students');
+      }, 100);
     }
-  }, [mounted, user, authLoading]);
+  }, [mounted, authMounted, user, redirecting, authLoading, router]);
 
-  // マウント前やログイン済みの場合の表示
-  if (!mounted || (mounted && user && !authLoading)) {
+  // 初期ローディング中またはリダイレクト処理中の表示
+  if (!mounted || !authMounted || authLoading || (user && !redirecting)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
-          {!mounted ? (
-            <>
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="text-gray-600">読み込み中...</p>
-            </>
-          ) : (
-            <>
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-              <p className="mb-4 text-gray-600">既にログインしています。3秒後に自動移動します...</p>
-              <button
-                onClick={() => window.location.href = '/students'}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                すぐに移動
-              </button>
-            </>
-          )}
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">
+            {user ? '既にログインしています。リダイレクト中...' : '認証状態を確認中...'}
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // リダイレクト処理中の表示
+  if (redirecting) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">リダイレクト中...</p>
         </div>
       </div>
     );
@@ -59,30 +62,48 @@ export default function LoginPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // 既にローディング中またはログイン済みの場合は重複実行を防ぐ
+    if (loading || user || redirecting) {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 ログイン処理をスキップ（重複防止）:', { loading, hasUser: !!user, redirecting });
+      }
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    console.log('🔐 ログイン試行開始:', { email });
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🔐 ログイン試行開始:', { email });
+    }
 
     try {
-      console.log('🔐 signIn関数を呼び出し中...');
       await signIn(email, password);
-      console.log('🔐 signIn成功、/studentsにリダイレクト');
-      // signIn成功後、直接/studentsに移動
-      window.location.href = '/students';
-    } catch (err: any) {
-      console.error('🔐 Login error:', err);
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 signIn成功、ユーザー状態変更を待機');
+      }
+      
+      // ログイン成功後は、AuthContextのユーザー状態変更により、
+      // useEffect で自動的にリダイレクトが実行される
+      
+    } catch (err: unknown) {
+      if (process.env.NODE_ENV === 'development') {
+        console.error('🔐 Login error:', err);
+      }
       
       // Supabaseのエラーメッセージを日本語に変換
       let errorMessage = 'ログインに失敗しました。';
       
-      if (err.message?.includes('Invalid login credentials')) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      
+      if (errorMsg.includes('Invalid login credentials')) {
         errorMessage = 'メールアドレスまたはパスワードが正しくありません。';
-      } else if (err.message?.includes('Email not confirmed')) {
+      } else if (errorMsg.includes('Email not confirmed')) {
         errorMessage = 'メールアドレスが確認されていません。';
-      } else if (err.message?.includes('Too many requests')) {
+      } else if (errorMsg.includes('Too many requests')) {
         errorMessage = 'ログイン試行回数が多すぎます。しばらく時間をおいてからお試しください。';
-      } else if (err.message?.includes('User not found')) {
+      } else if (errorMsg.includes('User not found')) {
         errorMessage = 'このアカウントは管理画面へのアクセス権限がありません。';
       }
       
@@ -164,13 +185,13 @@ export default function LoginPage() {
             <div>
               <button
                 type="submit"
-                disabled={loading || !email || !password}
+                disabled={loading || redirecting || !email || !password || !!user}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
               >
-                {loading ? (
+                {loading || redirecting ? (
                   <div className="flex items-center">
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    ログイン中...
+                    {redirecting ? 'リダイレクト中...' : 'ログイン中...'}
                   </div>
                 ) : (
                   'ログイン'

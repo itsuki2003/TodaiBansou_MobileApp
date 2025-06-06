@@ -3,8 +3,14 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { StudentWithAssignments } from '@/types/student';
+import { StudentWithAssignments, Assignment } from '@/types/student';
 import Header from '@/components/ui/Header';
+import DropdownMenu, { AlertDialog, DropdownMenuItem } from '@/components/ui/DropdownMenu';
+import Breadcrumb, { breadcrumbPaths } from '@/components/ui/Breadcrumb';
+import StudentCard, { StudentRowTablet } from '@/components/students/StudentCard';
+import { useDebounce } from '@/hooks/useDebounce';
+import { PageLoader } from '@/components/ui/common/AppLoader';
+import { ErrorDisplay } from '@/components/ui/common/ErrorDisplay';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<StudentWithAssignments[]>([]);
@@ -14,6 +20,14 @@ export default function StudentsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [gradeFilter, setGradeFilter] = useState<string>('all');
+  
+  // デバウンス処理を適用（300ms後に検索実行）
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+  
+  // 削除関連の状態
+  const [deleteLoading, setDeleteLoading] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedStudent, setSelectedStudent] = useState<StudentWithAssignments | null>(null);
 
   useEffect(() => {
     fetchStudents();
@@ -21,7 +35,7 @@ export default function StudentsPage() {
 
   useEffect(() => {
     filterStudents();
-  }, [students, searchTerm, statusFilter, gradeFilter]);
+  }, [students, debouncedSearchTerm, statusFilter, gradeFilter]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const fetchStudents = async () => {
     try {
@@ -62,11 +76,11 @@ export default function StudentsPage() {
   const filterStudents = () => {
     let filtered = students;
 
-    // 名前・フリガナで検索
-    if (searchTerm) {
+    // 名前・フリガナで検索（デバウンスされた値を使用）
+    if (debouncedSearchTerm) {
       filtered = filtered.filter(student =>
-        student.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (student.furigana_name && student.furigana_name.toLowerCase().includes(searchTerm.toLowerCase()))
+        student.full_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()) ||
+        (student.furigana_name && student.furigana_name.toLowerCase().includes(debouncedSearchTerm.toLowerCase()))
       );
     }
 
@@ -91,7 +105,7 @@ export default function StudentsPage() {
     return grades;
   };
 
-  const getTeachersByRole = (assignments: any[]) => {
+  const getTeachersByRole = (assignments: Assignment[]) => {
     const mentorTeachers = assignments
       .filter(assignment => assignment.role === '面談担当（リスト編集可）')
       .map(assignment => assignment.teacher.full_name);
@@ -106,35 +120,85 @@ export default function StudentsPage() {
     };
   };
 
+  // 削除確認ダイアログを開く
+  const handleDeleteClick = (student: StudentWithAssignments) => {
+    setSelectedStudent(student);
+    setDeleteDialogOpen(true);
+  };
+
+  // 削除実行
+  const handleDeleteConfirm = async () => {
+    if (!selectedStudent) return;
+
+    setDeleteLoading(true);
+    try {
+      const response = await fetch(`/api/students/${selectedStudent.id}`, {
+        method: 'DELETE',
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        // 成功時は一覧を再取得
+        await fetchStudents();
+        setDeleteDialogOpen(false);
+        setSelectedStudent(null);
+      } else {
+        setError(result.error || '削除に失敗しました');
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      setError('削除中にエラーが発生しました');
+    } finally {
+      setDeleteLoading(false);
+    }
+  };
+
+  // ドロップダウンメニューのアイテムを生成
+  const getMenuItems = (student: StudentWithAssignments): DropdownMenuItem[] => [
+    {
+      label: '詳細表示',
+      onClick: () => window.location.href = `/students/${student.id}`,
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+        </svg>
+      ),
+    },
+    {
+      label: '編集',
+      onClick: () => window.location.href = `/students/${student.id}/edit`,
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+        </svg>
+      ),
+    },
+    {
+      label: '削除',
+      onClick: () => handleDeleteClick(student),
+      variant: 'destructive',
+      disabled: student.status === '退会済み',
+      separator: true,
+      icon: (
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+        </svg>
+      ),
+    },
+  ];
+
   if (loading) {
-    return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            <span className="ml-2 text-gray-600">読み込み中...</span>
-          </div>
-        </div>
-      </div>
-    );
+    return <PageLoader message="生徒データを読み込み中..." />;
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8">
-        <div className="max-w-7xl mx-auto">
-          <div className="bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <div className="ml-3">
-                <h3 className="text-sm font-medium text-red-800">エラーが発生しました</h3>
-                <div className="mt-2 text-sm text-red-700">
-                  <p>{error}</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <ErrorDisplay 
+        errorMessage={error}
+        onRetry={fetchStudents}
+      />
     );
   }
 
@@ -142,6 +206,16 @@ export default function StudentsPage() {
     <div className="min-h-screen bg-gray-50">
       <Header />
       <div className="max-w-7xl mx-auto p-8">
+        {/* パンくずリスト */}
+        <div className="mb-6">
+          <Breadcrumb 
+            items={[
+              breadcrumbPaths.home,
+              breadcrumbPaths.students
+            ]}
+          />
+        </div>
+
         {/* ヘッダー */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">生徒管理</h1>
@@ -159,8 +233,8 @@ export default function StudentsPage() {
         </div>
 
         {/* 検索・フィルター */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 mb-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
                 生徒名・フリガナで検索
@@ -218,8 +292,8 @@ export default function StudentsPage() {
           </div>
         )}
 
-        {/* テーブル */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        {/* デスクトップ用テーブル */}
+        <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -288,9 +362,7 @@ export default function StudentsPage() {
                         {teachers.instructors}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button className="text-blue-600 hover:text-blue-900 transition-colors">
-                          編集
-                        </button>
+                        <DropdownMenu items={getMenuItems(student)} />
                       </td>
                     </tr>
                   );
@@ -300,17 +372,89 @@ export default function StudentsPage() {
           </div>
         </div>
 
+        {/* タブレット用簡略テーブル */}
+        <div className="hidden md:block lg:hidden bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200">
+              <thead className="bg-gray-50">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    生徒氏名
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    学年
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    通塾先
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    在籍状況
+                  </th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    操作
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="bg-white divide-y divide-gray-200">
+                {filteredStudents.map((student) => (
+                  <StudentRowTablet 
+                    key={student.id}
+                    student={student} 
+                    menuItems={getMenuItems(student)}
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* モバイル用カードレイアウト */}
+        <div className="md:hidden space-y-4">
+          {filteredStudents.map((student) => {
+            const teachers = getTeachersByRole(student.assignments);
+            return (
+              <StudentCard
+                key={student.id}
+                student={student}
+                menuItems={getMenuItems(student)}
+                teachers={teachers}
+              />
+            );
+          })}
+        </div>
+
         {/* データがない場合 */}
         {filteredStudents.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-500">
-              {searchTerm || statusFilter !== 'all' || gradeFilter !== 'all'
+              {debouncedSearchTerm || statusFilter !== 'all' || gradeFilter !== 'all'
                 ? '検索条件に一致する生徒が見つかりませんでした。'
                 : '登録されている生徒がありません。'
               }
             </div>
           </div>
         )}
+
+        {/* 削除確認ダイアログ */}
+        <AlertDialog
+          isOpen={deleteDialogOpen}
+          onClose={() => {
+            if (!deleteLoading) {
+              setDeleteDialogOpen(false);
+              setSelectedStudent(null);
+            }
+          }}
+          onConfirm={handleDeleteConfirm}
+          title="生徒の退会処理"
+          description={
+            selectedStudent
+              ? `本当に「${selectedStudent.full_name}」さんを退会済みにしますか？この操作により生徒のステータスが「退会済み」に変更されます。データが完全に削除されるわけではありませんが、この操作は元に戻せません。`
+              : ''
+          }
+          confirmText={deleteLoading ? "処理中..." : "退会にする"}
+          cancelText="キャンセル"
+          variant="destructive"
+        />
       </div>
     </div>
   );

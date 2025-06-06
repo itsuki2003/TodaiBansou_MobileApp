@@ -3,7 +3,14 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export async function middleware(request: NextRequest) {
-  console.log('🚨 Middleware実行:', request.nextUrl.pathname);
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🚨 Middleware実行:', request.nextUrl.pathname);
+  }
+  
+  // ログインページは早期リターン（安全策）
+  if (request.nextUrl.pathname === '/login') {
+    return NextResponse.next();
+  }
   
   let response = NextResponse.next({
     request: {
@@ -19,7 +26,7 @@ export async function middleware(request: NextRequest) {
         get(name: string) {
           return request.cookies.get(name)?.value;
         },
-        set(name: string, value: string, options: any) {
+        set(name: string, value: string, options: { [key: string]: unknown }) {
           request.cookies.set({
             name,
             value,
@@ -36,7 +43,7 @@ export async function middleware(request: NextRequest) {
             ...options,
           });
         },
-        remove(name: string, options: any) {
+        remove(name: string, options: { [key: string]: unknown }) {
           request.cookies.set({
             name,
             value: '',
@@ -59,33 +66,46 @@ export async function middleware(request: NextRequest) {
 
   // セッション確認
   const { data: { session } } = await supabase.auth.getSession();
-  console.log('🚨 セッション確認結果:', !!session);
 
-  // ログインページへのアクセスの場合
+  // ルートパス（/）へのアクセスの場合
+  if (request.nextUrl.pathname === '/') {
+    if (session) {
+      return NextResponse.redirect(new URL('/students', request.url));
+    } else {
+      return NextResponse.redirect(new URL('/login', request.url));
+    }
+  }
+
+  // ログインページへのアクセスの場合（二重チェック）
   if (request.nextUrl.pathname === '/login') {
-    console.log('🚨 ログインページアクセス、セッション:', !!session);
     // 既にログインしている場合はリダイレクト
     if (session) {
-      console.log('🚨 ログイン済み、/studentsにリダイレクト');
       return NextResponse.redirect(new URL('/students', request.url));
     }
-    console.log('🚨 未ログイン、ログインページ表示');
     return response;
   }
 
   // 保護されたページへのアクセスの場合
   if (!session) {
-    console.log('🚨 セッションなし、/loginにリダイレクト');
     // セッションがない場合はログインページにリダイレクト
-    return NextResponse.redirect(new URL('/login', request.url));
+    // ログアウト後のクリーンなリダイレクトのためにキャッシュを無効化
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    redirectResponse.headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+    redirectResponse.headers.set('Pragma', 'no-cache');
+    redirectResponse.headers.set('Expires', '0');
+    return redirectResponse;
   }
 
-  console.log('🚨 セッションあり、権限確認へ');
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🚨 セッションあり、権限確認へ');
+  }
 
   // セッションがある場合、ユーザーの権限確認
   try {
     const userId = session.user.id;
-    console.log('🚨 権限確認開始:', userId);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚨 権限確認開始:', userId);
+    }
 
     // administrators テーブルを確認
     const { data: adminData } = await supabase
@@ -95,10 +115,14 @@ export async function middleware(request: NextRequest) {
       .eq('account_status', '有効')
       .single();
 
-    console.log('🚨 管理者確認結果:', !!adminData);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚨 管理者確認結果:', !!adminData);
+    }
 
     if (adminData) {
-      console.log('🚨 管理者として認証OK');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚨 管理者として認証OK');
+      }
       return response; // 管理者として認証済み
     }
 
@@ -110,25 +134,51 @@ export async function middleware(request: NextRequest) {
       .eq('account_status', '有効')
       .single();
 
-    console.log('🚨 講師確認結果:', !!teacherData);
+    if (process.env.NODE_ENV === 'development') {
+      console.log('🚨 講師確認結果:', !!teacherData);
+    }
 
     if (teacherData) {
-      console.log('🚨 講師として認証OK');
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🚨 講師として認証OK');
+      }
       return response; // 講師として認証済み
     }
 
     // どちらでもない場合はアクセス拒否
-    console.warn('🚨 権限なし、ログインページにリダイレクト');
-    return NextResponse.redirect(new URL('/login', request.url));
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('🚨 権限なし、ログインページにリダイレクト');
+    }
+    // 権限がない場合もキャッシュを無効化してリダイレクト
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    redirectResponse.headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+    redirectResponse.headers.set('Pragma', 'no-cache');
+    redirectResponse.headers.set('Expires', '0');
+    return redirectResponse;
   } catch (error) {
-    console.error('🚨 Middleware error:', error);
-    return NextResponse.redirect(new URL('/login', request.url));
+    if (process.env.NODE_ENV === 'development') {
+      console.error('🚨 Middleware error:', error);
+    }
+    // エラー時もキャッシュを無効化してリダイレクト
+    const redirectResponse = NextResponse.redirect(new URL('/login', request.url));
+    redirectResponse.headers.set('Cache-Control', 'no-cache, no-store, max-age=0, must-revalidate');
+    redirectResponse.headers.set('Pragma', 'no-cache');
+    redirectResponse.headers.set('Expires', '0');
+    return redirectResponse;
   }
 }
 
 export const config = {
   matcher: [
-    // 一時的にミドルウェアを無効化（クライアントサイド認証テスト用）
-    // '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    /*
+     * 以下のパスを除くすべてのリクエストに対してミドルウェアを実行:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - 画像ファイル (svg, png, jpg, jpeg, gif, webp)
+     * - login (ログインページは除外)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico|login$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

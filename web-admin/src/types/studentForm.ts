@@ -14,14 +14,29 @@ export interface StudentFormData {
   parent_phone_number: string;
 }
 
-export interface CreateStudentRequest extends StudentFormData {
-  // API送信用
-}
+// API送信用の型（現在はStudentFormDataと同じ構造）
+export type CreateStudentRequest = StudentFormData;
 
 export interface CreateStudentResponse {
   success: boolean;
   student_id?: string;
   user_id?: string;
   message?: string;
+  error?: string;
+}
+
+export interface UpdateStudentRequest extends StudentFormData {
+  id: string;
+}
+
+export interface UpdateStudentResponse {
+  success: boolean;
+  message?: string;
+  error?: string;
+}
+
+export interface GetStudentResponse {
+  success: boolean;
+  student?: StudentFormData & { id: string };
   error?: string;
 }
