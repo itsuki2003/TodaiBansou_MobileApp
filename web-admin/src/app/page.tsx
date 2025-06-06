@@ -1,24 +1,11 @@
 import Link from "next/link";
+import Header from "@/components/ui/Header";
 
 export default function Home() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ヘッダー */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <h1 className="text-2xl font-bold text-gray-900">東大伴走 管理画面</h1>
-            <nav className="flex space-x-4">
-              <Link 
-                href="/students" 
-                className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium"
-              >
-                生徒管理
-              </Link>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <Header />
 
       {/* メインコンテンツ */}
       <main className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

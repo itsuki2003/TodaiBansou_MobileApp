@@ -1,8 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { StudentWithAssignments } from '@/types/student';
+import Header from '@/components/ui/Header';
 
 export default function StudentsPage() {
   const [students, setStudents] = useState<StudentWithAssignments[]>([]);
@@ -137,8 +139,9 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50">
+      <Header />
+      <div className="max-w-7xl mx-auto p-8">
         {/* ヘッダー */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-4">生徒管理</h1>
@@ -146,9 +149,12 @@ export default function StudentsPage() {
             <p className="text-gray-600">
               全{students.length}名の生徒が登録されています
             </p>
-            <button className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors">
+            <Link 
+              href="/students/new"
+              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors inline-block"
+            >
               新規生徒登録
-            </button>
+            </Link>
           </div>
         </div>
 
