@@ -23,38 +23,47 @@ export default function LoginPage() {
   useEffect(() => {
     if (mounted && authMounted && user && !redirecting && !authLoading) {
       if (process.env.NODE_ENV === 'development') {
-        console.log('🔐 ユーザー存在確認、リダイレクト開始');
+        console.log('🔐 ユーザー存在確認、リダイレクト開始', { 
+          userId: user.id, 
+          role: user.role,
+          mounted, 
+          authMounted, 
+          redirecting, 
+          authLoading 
+        });
       }
       setRedirecting(true);
       
-      // わずかな遅延を入れて確実にリダイレクト
-      setTimeout(() => {
-        router.push('/students');
-      }, 100);
+      // リダイレクト実行のログ
+      if (process.env.NODE_ENV === 'development') {
+        console.log('🔐 router.replace実行前');
+      }
+      
+      try {
+        // router.replaceを使ってブラウザ履歴を汚染しないようにする
+        router.replace('/students');
+        if (process.env.NODE_ENV === 'development') {
+          console.log('🔐 router.replace実行成功');
+        }
+      } catch (error) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('🔐 router.replaceエラー:', error);
+        }
+        // fallback: window.location.replaceを試す
+        window.location.replace('/students');
+      }
     }
   }, [mounted, authMounted, user, redirecting, authLoading, router]);
 
   // 初期ローディング中またはリダイレクト処理中の表示
-  if (!mounted || !authMounted || authLoading || (user && !redirecting)) {
+  if (!mounted || !authMounted || authLoading || redirecting || user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">
-            {user ? '既にログインしています。リダイレクト中...' : '認証状態を確認中...'}
+            {redirecting ? 'リダイレクト中...' : user ? '既にログインしています。リダイレクト中...' : '認証状態を確認中...'}
           </p>
-        </div>
-      </div>
-    );
-  }
-
-  // リダイレクト処理中の表示
-  if (redirecting) {
-    return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">リダイレクト中...</p>
         </div>
       </div>
     );

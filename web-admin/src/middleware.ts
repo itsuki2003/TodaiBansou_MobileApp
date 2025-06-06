@@ -7,11 +7,6 @@ export async function middleware(request: NextRequest) {
     console.log('🚨 Middleware実行:', request.nextUrl.pathname);
   }
   
-  // ログインページは早期リターン（安全策）
-  if (request.nextUrl.pathname === '/login') {
-    return NextResponse.next();
-  }
-  
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -66,6 +61,10 @@ export async function middleware(request: NextRequest) {
 
   // セッション確認
   const { data: { session } } = await supabase.auth.getSession();
+  
+  if (process.env.NODE_ENV === 'development') {
+    console.log('🚨 ミドルウェア セッション確認結果:', !!session, session ? session.user.id : 'no user');
+  }
 
   // ルートパス（/）へのアクセスの場合
   if (request.nextUrl.pathname === '/') {
@@ -74,15 +73,6 @@ export async function middleware(request: NextRequest) {
     } else {
       return NextResponse.redirect(new URL('/login', request.url));
     }
-  }
-
-  // ログインページへのアクセスの場合（二重チェック）
-  if (request.nextUrl.pathname === '/login') {
-    // 既にログインしている場合はリダイレクト
-    if (session) {
-      return NextResponse.redirect(new URL('/students', request.url));
-    }
-    return response;
   }
 
   // 保護されたページへのアクセスの場合
@@ -176,9 +166,9 @@ export const config = {
      * - _next/static (static files)
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
+     * - login (ログインページは完全に除外)
      * - 画像ファイル (svg, png, jpg, jpeg, gif, webp)
-     * - login (ログインページは除外)
      */
-    '/((?!api|_next/static|_next/image|favicon.ico|login$|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!api|_next/static|_next/image|favicon.ico|login|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };

@@ -26,32 +26,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
     
-    // 初期セッション確認
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (process.env.NODE_ENV === 'development') {
-        console.log('🔑 初期セッション確認:', !!session);
-      }
-      if (session) {
-        setUserFromSession(session);
-      } else {
-        setUser(null);
-        setLoading(false);
-      }
-    });
-
-    // 認証状態の変化を監視
+    // 認証状態の変化を監視（初期セッション確認も含む）
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (process.env.NODE_ENV === 'development') {
-          console.log('🔄 Auth state change:', event);
+          console.log('🔄 Auth state change:', event, session ? 'with session' : 'no session');
         }
-        if (event === 'SIGNED_IN' && session) {
-          // 既に処理中でない場合のみ実行
+        
+        if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session) {
+          // 重複処理防止
           if (processingSession !== session.user.id) {
             await setUserFromSession(session);
+          } else {
+            if (process.env.NODE_ENV === 'development') {
+              console.log('👤 セッション処理をスキップ（重複防止）:', { event, processingSession, userId: session.user.id });
+            }
           }
         } else if (event === 'SIGNED_OUT') {
-          
           // クライアント側の状態を完全にクリア
           setUser(null);
           setLoading(false);
@@ -74,6 +65,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           if (process.env.NODE_ENV === 'development') {
             console.log('🔄 SIGNED_OUT - 状態クリア完了');
+          }
+        } else if (event === 'INITIAL_SESSION' && !session) {
+          // 初期セッション確認でセッションがない場合
+          setUser(null);
+          setLoading(false);
+          setProcessingSession(null);
+          if (process.env.NODE_ENV === 'development') {
+            console.log('👤 初期セッションなし、状態をクリア');
           }
         }
       }
