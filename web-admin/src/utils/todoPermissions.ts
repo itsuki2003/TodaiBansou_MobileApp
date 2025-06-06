@@ -1,0 +1,78 @@
+import { AuthUser } from '@/types/auth';
+import { TodoPermissions } from '@/types/todoList';
+
+/**
+ * ユーザーの役割に基づいてやることリスト管理の権限を取得
+ */
+export function getTodoPermissions(user: AuthUser | null): TodoPermissions {
+  if (!user) {
+    return {
+      canEditTasks: false,
+      canAddTasks: false,
+      canDeleteTasks: false,
+      canReorderTasks: false,
+      canEditComments: false,
+      canPublish: false,
+    };
+  }
+
+  // 管理者は全権限を持つ
+  if (user.role === 'admin') {
+    return {
+      canEditTasks: true,
+      canAddTasks: true,
+      canDeleteTasks: true,
+      canReorderTasks: true,
+      canEditComments: true,
+      canPublish: true,
+    };
+  }
+
+  // 講師の場合は、今のところ基本的な権限のみ
+  // 将来的に面談担当・授業担当の区別をする場合は、
+  // assignments テーブルを確認するロジックをここに追加
+  if (user.role === 'teacher') {
+    return {
+      canEditTasks: true, // 面談担当講師の場合のみtrueにする予定
+      canAddTasks: true,  // 面談担当講師の場合のみtrueにする予定
+      canDeleteTasks: true, // 面談担当講師の場合のみtrueにする予定
+      canReorderTasks: true, // 面談担当講師の場合のみtrueにする予定
+      canEditComments: true, // すべての講師がコメント可能
+      canPublish: true, // 面談担当講師の場合のみtrueにする予定
+    };
+  }
+
+  return {
+    canEditTasks: false,
+    canAddTasks: false,
+    canDeleteTasks: false,
+    canReorderTasks: false,
+    canEditComments: false,
+    canPublish: false,
+  };
+}
+
+/**
+ * 特定の生徒に対する講師の権限を取得
+ * 将来的にassignmentsテーブルを確認して面談担当・授業担当を区別する
+ */
+export async function getTeacherPermissionsForStudent(
+  user: AuthUser | null,
+  studentId: string
+): Promise<TodoPermissions> {
+  if (!user) {
+    return getTodoPermissions(null);
+  }
+
+  // 管理者は常に全権限
+  if (user.role === 'admin') {
+    return getTodoPermissions(user);
+  }
+
+  // TODO: 将来的に assignments テーブルをチェックして
+  // この講師が対象生徒の面談担当か授業担当かを判定し、
+  // それに応じて権限を調整する
+
+  // 現在は基本的な講師権限を返す
+  return getTodoPermissions(user);
+}
