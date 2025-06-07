@@ -48,65 +48,69 @@ export default function Home() {
                 </div>
               </Link>
 
-              {/* 講師管理カード（プレースホルダー） */}
-              <div className="bg-white overflow-hidden shadow rounded-lg opacity-50">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="h-8 w-8 bg-green-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-semibold">講</span>
+              {/* 講師ダッシュボードカード */}
+              <Link href="/teacher-dashboard">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 bg-green-500 rounded-md flex items-center justify-center">
+                          <span className="text-white font-semibold">講</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            講師ダッシュボード
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            マイページ・担当管理
+                          </dd>
+                        </dl>
                       </div>
                     </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          講師管理
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          講師一覧・編集
-                        </dd>
-                      </dl>
+                  </div>
+                  <div className="bg-gray-50 px-5 py-3">
+                    <div className="text-sm">
+                      <span className="font-medium text-green-600 hover:text-green-500">
+                        講師ダッシュボードへ →
+                      </span>
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 px-5 py-3">
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-400">
-                      準備中
-                    </span>
-                  </div>
-                </div>
-              </div>
+              </Link>
 
-              {/* やることリスト管理カード（プレースホルダー） */}
-              <div className="bg-white overflow-hidden shadow rounded-lg opacity-50">
-                <div className="p-5">
-                  <div className="flex items-center">
-                    <div className="flex-shrink-0">
-                      <div className="h-8 w-8 bg-purple-500 rounded-md flex items-center justify-center">
-                        <span className="text-white font-semibold">課</span>
+              {/* スケジュール管理カード */}
+              <Link href="/schedule">
+                <div className="bg-white overflow-hidden shadow rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="p-5">
+                    <div className="flex items-center">
+                      <div className="flex-shrink-0">
+                        <div className="h-8 w-8 bg-purple-500 rounded-md flex items-center justify-center">
+                          <span className="text-white font-semibold">予</span>
+                        </div>
+                      </div>
+                      <div className="ml-5 w-0 flex-1">
+                        <dl>
+                          <dt className="text-sm font-medium text-gray-500 truncate">
+                            授業スケジュール
+                          </dt>
+                          <dd className="text-lg font-medium text-gray-900">
+                            授業・面談管理
+                          </dd>
+                        </dl>
                       </div>
                     </div>
-                    <div className="ml-5 w-0 flex-1">
-                      <dl>
-                        <dt className="text-sm font-medium text-gray-500 truncate">
-                          やることリスト
-                        </dt>
-                        <dd className="text-lg font-medium text-gray-900">
-                          課題管理・編集
-                        </dd>
-                      </dl>
+                  </div>
+                  <div className="bg-gray-50 px-5 py-3">
+                    <div className="text-sm">
+                      <span className="font-medium text-purple-600 hover:text-purple-500">
+                        スケジュール管理へ →
+                      </span>
                     </div>
                   </div>
                 </div>
-                <div className="bg-gray-50 px-5 py-3">
-                  <div className="text-sm">
-                    <span className="font-medium text-gray-400">
-                      準備中
-                    </span>
-                  </div>
-                </div>
-              </div>
+              </Link>
             </div>
           </div>
         </div>

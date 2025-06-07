@@ -24,6 +24,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // 電話番号形式チェック（任意項目の場合）
+    if (body.parent_phone_number) {
+      const phoneRegex = /^[\d-+().\s]+$/;
+      if (!phoneRegex.test(body.parent_phone_number)) {
+        return NextResponse.json<CreateStudentResponse>(
+          { success: false, error: '正しい電話番号形式で入力してください' },
+          { status: 400 }
+        );
+      }
+    }
+
+    // 重複メールアドレスチェック
+    const { data: existingUser } = await supabaseAdmin.auth.admin.listUsers();
+    const existingEmail = existingUser.users.find(u => u.email === body.parent_email);
+    if (existingEmail) {
+      return NextResponse.json<CreateStudentResponse>(
+        { success: false, error: 'このメールアドレスは既に登録されています' },
+        { status: 409 }
+      );
+    }
+
     console.log('🔷 新規生徒登録開始:', { email: body.parent_email, student: body.full_name });
 
     // 初期パスワード生成
@@ -108,16 +129,25 @@ export async function POST(request: NextRequest) {
         success: true,
         student_id: createdStudentId,
         user_id: createdUserId,
-        message: `生徒「${body.full_name}」の登録が完了しました。保護者のログインパスワードは「${initialPassword}」です。`,
+        message: `生徒「${body.full_name}」の登録が完了しました。初期パスワードは別途お知らせします。`,
+        // セキュリティ上、パスワードはレスポンスに含めない
       });
 
     } catch (processingError) {
       console.error('🔷 処理中エラー:', processingError);
 
-      // エラー時のクリーンアップ
+      // エラー時のクリーンアップ（順序を改善）
       console.log('🔷 エラー時のクリーンアップ開始');
 
+      // チャットグループが作成されている場合は削除
       if (createdStudentId) {
+        console.log('🔷 作成済みチャットグループを削除中...');
+        await supabaseAdmin
+          .from('chat_groups')
+          .delete()
+          .eq('student_id', createdStudentId)
+          .catch(err => console.error('🔷 チャットグループ削除エラー:', err));
+
         console.log('🔷 作成済み生徒データを削除中...');
         await supabaseAdmin
           .from('students')

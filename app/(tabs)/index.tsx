@@ -12,6 +12,7 @@ import {
   Modal,
 } from 'react-native';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
+import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import TaskItem from '@/components/ui/TaskItem';
 import TeacherCommentComponent from '@/components/ui/TeacherComment';
@@ -51,6 +52,7 @@ const getWeekStartDate = (date: Date) => {
 };
 
 export default function HomeScreen() {
+  const router = useRouter();
   const { user, userRole, userRoleLoading, selectedStudent } = useAuth();
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -436,6 +438,62 @@ export default function HomeScreen() {
             createdAt={teacherComment.created_at}
           />
         )}
+
+        {/* クイックアクション */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>クイックアクション</Text>
+          
+          {/* 週間やることリスト */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/weekly-tasks' as any)}
+          >
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardEmoji}>📅</Text>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>週間やることリスト</Text>
+                <Text style={styles.actionCardDescription}>
+                  今週の学習計画を確認しよう
+                </Text>
+              </View>
+              <Text style={styles.actionCardArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 欠席申請 */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/calendar')}
+          >
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardEmoji}>🏥</Text>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>欠席申請</Text>
+                <Text style={styles.actionCardDescription}>
+                  授業を欠席する場合はこちら
+                </Text>
+              </View>
+              <Text style={styles.actionCardArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+
+          {/* 追加授業申請 */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => router.push('/additional-lesson-request' as any)}
+          >
+            <View style={styles.actionCardHeader}>
+              <Text style={styles.actionCardEmoji}>📚</Text>
+              <View style={styles.actionCardContent}>
+                <Text style={styles.actionCardTitle}>追加授業申請</Text>
+                <Text style={styles.actionCardDescription}>
+                  追加で授業を受けたい場合はこちら
+                </Text>
+              </View>
+              <Text style={styles.actionCardArrow}>›</Text>
+            </View>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
       {/* タスク完了時のアニメーションOverlayは、TaskItem内で個別に表示するか、
           あるいは celebrateTaskId を使ってHomeScreen全体に表示するかを選択できます。
@@ -594,5 +652,45 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  actionCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  actionCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  actionCardEmoji: {
+    fontSize: 24,
+    marginRight: 12,
+  },
+  actionCardContent: {
+    flex: 1,
+  },
+  actionCardTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  actionCardDescription: {
+    fontSize: 14,
+    color: '#64748B',
+  },
+  actionCardArrow: {
+    fontSize: 20,
+    color: '#94A3B8',
+    fontWeight: '300',
   },
 });

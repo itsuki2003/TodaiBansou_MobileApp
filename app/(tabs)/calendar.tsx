@@ -256,9 +256,9 @@ export default function CalendarScreen() {
       if (slotsError) throw slotsError;
 
       // 通常授業の回数制限を適用
-      const processedSlots = (slots as LessonSlot[]).map(slot => ({
+      const processedSlots = (slots as any[]).map(slot => ({
         ...slot,
-        teacher_name: slot.teachers.full_name,
+        teacher_name: slot.teachers?.full_name || '未定',
       }));
 
       // 日付ごとにデータを整理
@@ -304,8 +304,8 @@ export default function CalendarScreen() {
     }
   };
 
-  const handleClassPress = (classItem: LessonSlot) => {
-    setSelectedClass(classItem);
+  const handleClassPress = (classItem: ProcessedLessonSlot) => {
+    setSelectedClass(classItem as any);
     if (classItem.status !== '欠席') {
       setShowAbsenceModal(true);
     }
@@ -315,14 +315,14 @@ export default function CalendarScreen() {
     setShowAbsenceModal(false);
     if (selectedClass) {
       router.push({
-        pathname: '/(tabs)/absence-request' as any,
+        pathname: '/absence-request' as any,
         params: { lessonId: selectedClass.id }
       });
     }
   };
 
   const handleAddClassRequest = () => {
-    router.push('/(tabs)/additional-lesson-request' as any);
+    router.push('/additional-lesson-request' as any);
   };
 
   // 選択された日付の予定を取得
@@ -477,7 +477,7 @@ export default function CalendarScreen() {
                     日時: {currentMonth.toLocaleString('default', { month: 'long' })} {selectedDate}日 {selectedClass.start_time}～{selectedClass.end_time}
                   </Text>
                   <Text style={styles.classDetailText}>
-                    担当: {selectedClass.teacher_name}
+                    担当: {(selectedClass as any).teacher_name || '未定'}
                   </Text>
                 </View>
                 

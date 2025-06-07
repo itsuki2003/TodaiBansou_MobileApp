@@ -8,7 +8,7 @@ import { LogoutConfirmDialog } from "@/components/ui/common/LogoutConfirmDialog"
 
 export default function Header() {
   const router = useRouter();
-  const { user, signOut, signOutLoading, signOutError, clearSignOutError } = useAuth();
+  const { user, loading, signOut, signOutLoading, signOutError, clearSignOutError } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 

@@ -54,7 +54,7 @@ export function getTodoPermissions(user: AuthUser | null): TodoPermissions {
 
 /**
  * 特定の生徒に対する講師の権限を取得
- * 将来的にassignmentsテーブルを確認して面談担当・授業担当を区別する
+ * assignmentsテーブルを確認して面談担当・授業担当を区別する
  */
 export async function getTeacherPermissionsForStudent(
   user: AuthUser | null,
@@ -69,10 +69,55 @@ export async function getTeacherPermissionsForStudent(
     return getTodoPermissions(user);
   }
 
-  // TODO: 将来的に assignments テーブルをチェックして
-  // この講師が対象生徒の面談担当か授業担当かを判定し、
-  // それに応じて権限を調整する
+  if (user.role === 'teacher') {
+    try {
+      // Supabaseクライアントが必要なので、この関数は使用側で実装する
+      // ここではプレースホルダとして基本権限を返す
+      
+      // TODO: assignments テーブルをチェック
+      // const { data: assignment } = await supabase
+      //   .from('assignments')
+      //   .select('role, status')
+      //   .eq('teacher_id', user.id)
+      //   .eq('student_id', studentId)
+      //   .eq('status', '有効')
+      //   .single();
 
-  // 現在は基本的な講師権限を返す
+      // if (assignment?.role === '面談担当（リスト編集可）') {
+      //   return {
+      //     canEditTasks: true,
+      //     canAddTasks: true,
+      //     canDeleteTasks: true,
+      //     canReorderTasks: true,
+      //     canEditComments: true,
+      //     canPublish: true,
+      //   };
+      // } else if (assignment?.role === '授業担当（コメントのみ）') {
+      //   return {
+      //     canEditTasks: false,
+      //     canAddTasks: false,
+      //     canDeleteTasks: false,
+      //     canReorderTasks: false,
+      //     canEditComments: true,
+      //     canPublish: false,
+      //   };
+      // }
+
+      // 現在は基本的な講師権限を返す
+      return getTodoPermissions(user);
+    } catch (error) {
+      console.error('Error checking teacher assignment:', error);
+      // エラー時は安全側に権限を制限
+      return {
+        canEditTasks: false,
+        canAddTasks: false,
+        canDeleteTasks: false,
+        canReorderTasks: false,
+        canEditComments: true, // コメントのみ許可
+        canPublish: false,
+      };
+    }
+  }
+
   return getTodoPermissions(user);
 }

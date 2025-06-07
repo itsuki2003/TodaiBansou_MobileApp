@@ -1,4 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
 
 // Supabaseの設定情報を環境変数から取得
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL as string;
@@ -9,5 +10,15 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabaseの環境変数が設定されていません。');
 }
 
-// Supabaseクライアントの初期化
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// createClient関数をエクスポート（各コンポーネントで新しいクライアントを作成するため）
+export function createClient() {
+  return createSupabaseClient(supabaseUrl, supabaseAnonKey);
+}
+
+// SSR対応のブラウザクライアント作成
+export function createBrowserSupabaseClient() {
+  return createBrowserClient(supabaseUrl, supabaseAnonKey);
+}
+
+// デフォルトのSupabaseクライアント（SSR対応）
+export const supabase = createBrowserSupabaseClient();

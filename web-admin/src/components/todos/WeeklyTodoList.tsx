@@ -108,18 +108,43 @@ export default function WeeklyTodoList({
     }
   };
 
-  // タスク更新
+  // タスク更新（楽観的ロックで競合回避）
   const handleUpdateTask = async (taskId: string, updates: Partial<UpdateTaskRequest>) => {
     if (!permissions.canEditTasks || isProcessing) return;
 
     setIsProcessing(true);
     try {
-      const { error } = await supabase
+      // 現在のタスクデータを取得（updated_atをチェック用）
+      const { data: currentTask, error: fetchError } = await supabase
         .from('tasks')
-        .update(updates)
-        .eq('id', taskId);
+        .select('updated_at')
+        .eq('id', taskId)
+        .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+
+      // 楽観的ロック：updated_atが変更されていないことを確認
+      const { data: updatedTask, error: updateError } = await supabase
+        .from('tasks')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', taskId)
+        .eq('updated_at', currentTask.updated_at) // 楽観的ロック条件
+        .select()
+        .single();
+
+      if (updateError) {
+        if (updateError.code === 'PGRST116') {
+          // 他のユーザーによって更新されている
+          alert('このタスクは他のユーザーによって更新されています。最新の状態を確認してください。');
+          onDataChange(); // 最新データを再取得
+          return;
+        }
+        throw updateError;
+      }
+
       onDataChange();
     } catch (error) {
       console.error('Error updating task:', error);

@@ -170,8 +170,11 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
     };
   };
 
-  const handleSend = async () => {
+  const handleSend = async (retryCount = 0) => {
     if ((inputText.trim() === '' && attachments.length === 0) || !user) return;
+
+    const maxRetries = 3;
+    let uploadedFilePath: string | null = null;
 
     try {
       setSending(true);
@@ -186,12 +189,19 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         const fileExt = attachment.type === 'image' ? 'jpg' : 'pdf';
         const fileName = `${Date.now()}.${fileExt}`;
         const filePath = `chat-attachments/${chatGroupId}/${fileName}`;
+        uploadedFilePath = filePath;
 
         const { error: uploadError } = await supabase.storage
           .from('chat-files')
           .upload(filePath, blob);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          // ファイルアップロード失敗時の詳細エラー
+          if (uploadError.message.includes('file_size_limit')) {
+            throw new Error('ファイルサイズが大きすぎます');
+          }
+          throw uploadError;
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from('chat-files')
@@ -220,9 +230,34 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
       // 入力欄をクリア
       setInputText('');
       setAttachments([]);
+      setError(null); // エラーをクリア
+
     } catch (err) {
       console.error('Error sending message:', err);
-      setError('メッセージの送信に失敗しました');
+      
+      // アップロードしたファイルをクリーンアップ
+      if (uploadedFilePath) {
+        await supabase.storage
+          .from('chat-files')
+          .remove([uploadedFilePath])
+          .catch(cleanupErr => console.error('Cleanup error:', cleanupErr));
+      }
+
+      // リトライ処理
+      if (retryCount < maxRetries && 
+          err instanceof Error && 
+          (err.message.includes('network') || err.message.includes('timeout'))) {
+        
+        setTimeout(() => {
+          handleSend(retryCount + 1);
+        }, Math.pow(2, retryCount) * 1000); // 指数バックオフ
+        
+        setError(`メッセージの送信を再試行中... (${retryCount + 1}/${maxRetries})`);
+        return;
+      }
+
+      const errorMessage = err instanceof Error ? err.message : 'メッセージの送信に失敗しました';
+      setError(errorMessage);
     } finally {
       setSending(false);
     }

@@ -26,6 +26,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMounted(true);
     
+    // 初期セッション確認を手動で実行
+    const checkInitialSession = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        
+        if (user && !error) {
+          // セッション情報を再取得してsetUserFromSessionを呼び出す
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            await setUserFromSession(session);
+          }
+        } else {
+          setLoading(false);
+        }
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') {
+          console.error('AuthContext: 初期セッション確認エラー:', err);
+        }
+        setLoading(false);
+      }
+    };
+    
+    checkInitialSession();
+    
     // 認証状態の変化を監視（初期セッション確認も含む）
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
@@ -106,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('full_name, account_status')
         .eq('user_id', userId)
         .eq('account_status', '有効')
-        .single();
+        .maybeSingle(); // single()の代わりにmaybeSingle()を使用
 
       if (adminData && !adminError) {
         if (process.env.NODE_ENV === 'development') {
@@ -132,7 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .select('full_name, account_status')
         .eq('user_id', userId)
         .eq('account_status', '有効')
-        .single();
+        .maybeSingle(); // single()の代わりにmaybeSingle()を使用
 
       if (teacherData && !teacherError) {
         if (process.env.NODE_ENV === 'development') {

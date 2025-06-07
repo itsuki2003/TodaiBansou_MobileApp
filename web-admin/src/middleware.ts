@@ -39,19 +39,19 @@ export async function middleware(request: NextRequest) {
     }
   );
 
-  // セッション確認
-  const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+  // セキュアなユーザー確認（getUser()を使用）
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
   
   if (process.env.NODE_ENV === 'development') {
-    console.log('🚨 ミドルウェア セッション確認結果:', !!session, session ? session.user.id : 'no user');
-    if (sessionError) {
-      console.error('🚨 セッション取得エラー:', sessionError);
+    console.log('🚨 ミドルウェア ユーザー確認結果:', !!user, user ? user.id : 'no user');
+    if (userError) {
+      console.error('🚨 ユーザー取得エラー:', userError);
     }
   }
 
   // ルートパス（/）へのアクセスの場合
   if (request.nextUrl.pathname === '/') {
-    if (session) {
+    if (user) {
       return NextResponse.redirect(new URL('/students', request.url));
     } else {
       return NextResponse.redirect(new URL('/login', request.url));
@@ -59,7 +59,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // 保護されたページへのアクセスの場合
-  if (!session) {
+  if (!user) {
     // セッションがない場合はログインページにリダイレクト
     if (process.env.NODE_ENV === 'development') {
       console.log('🚨 セッションなし、ログインページにリダイレクト');
@@ -82,10 +82,9 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * 一時的にミドルウェアを無効化
-     * クッキー読み取り問題を解決するため
+     * 保護するパスを指定
+     * ログインページとAPIルートは除外
      */
-    // 何もマッチしないパターンで無効化
-    '/middleware-disabled',
+    '/((?!api|_next/static|_next/image|favicon.ico|login).*)',
   ],
 };
