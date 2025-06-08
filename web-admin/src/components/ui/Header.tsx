@@ -60,41 +60,81 @@ export default function Header() {
   }
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
+    <header className="bg-white shadow-md border-b border-primary-100">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           {/* ロゴ・タイトル */}
-          <Link href="/students" className="flex items-center">
-            <h1 className="text-2xl font-bold text-gray-900">東大伴走 管理画面</h1>
+          <Link href="/students" className="flex items-center space-x-3 group">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
+              <span className="text-white font-bold text-lg">東</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-primary-700 group-hover:text-primary-600 transition-colors">
+                東大伴走
+              </h1>
+              <span className="text-xs text-gray-500 font-medium">管理画面</span>
+            </div>
           </Link>
 
           {/* ナビゲーション */}
           <nav className="hidden md:flex space-x-6">
             <Link 
               href="/students" 
-              className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >
               生徒一覧
             </Link>
             <Link 
               href="/students/new" 
-              className="text-blue-600 hover:text-blue-700 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              className="text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-2 rounded-md text-sm font-medium transition-colors"
             >
               新規生徒登録
+            </Link>
+            <Link 
+              href="/assignments" 
+              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              担当割り当て
+            </Link>
+            <Link 
+              href="/schedule" 
+              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              スケジュール
+            </Link>
+            {user.role === 'teacher' && (
+              <Link 
+                href="/teacher-dashboard" 
+                className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+              >
+                ダッシュボード
+              </Link>
+            )}
+            <Link 
+              href="/requests" 
+              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              申請管理
             </Link>
             {user.role === 'admin' && (
               <>
                 <Link 
                   href="/teachers" 
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
+                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   講師管理
                 </Link>
                 <Link 
-                  href="/todo-lists" 
-                  className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors opacity-50 cursor-not-allowed"
+                  href="/teacher-applications" 
+                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
-                  やることリスト
+                  講師申請
+                </Link>
+                <Link 
+                  href="/notifications" 
+                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                >
+                  お知らせ
                 </Link>
               </>
             )}
@@ -104,7 +144,7 @@ export default function Header() {
           <div className="relative">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center space-x-2 text-gray-700 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md px-3 py-2"
+              className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-md px-3 py-2 transition-colors"
             >
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-medium">{user.profile?.full_name || user.email}</div>
@@ -112,7 +152,7 @@ export default function Header() {
                   {user.role === 'admin' ? '運営者' : '講師'}
                 </div>
               </div>
-              <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-sm">
                 <span className="text-white text-sm font-semibold">
                   {user.profile?.full_name ? user.profile.full_name.charAt(0) : user.email.charAt(0).toUpperCase()}
                 </span>
@@ -174,14 +214,59 @@ export default function Header() {
             >
               新規生徒登録
             </Link>
+            <Link 
+              href="/assignments" 
+              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              担当割り当て
+            </Link>
+            <Link 
+              href="/schedule" 
+              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              スケジュール
+            </Link>
+            {user.role === 'teacher' && (
+              <Link 
+                href="/teacher-dashboard" 
+                className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                onClick={() => setIsMenuOpen(false)}
+              >
+                ダッシュボード
+              </Link>
+            )}
+            <Link 
+              href="/requests" 
+              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              申請管理
+            </Link>
             {user.role === 'admin' && (
               <>
-                <div className="block px-3 py-2 text-gray-400 text-sm font-medium opacity-50">
-                  講師管理（準備中）
-                </div>
-                <div className="block px-3 py-2 text-gray-400 text-sm font-medium opacity-50">
-                  やることリスト（準備中）
-                </div>
+                <Link 
+                  href="/teachers" 
+                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  講師管理
+                </Link>
+                <Link 
+                  href="/teacher-applications" 
+                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  講師申請
+                </Link>
+                <Link 
+                  href="/notifications" 
+                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
+                  onClick={() => setIsMenuOpen(false)}
+                >
+                  お知らせ
+                </Link>
               </>
             )}
           </div>
