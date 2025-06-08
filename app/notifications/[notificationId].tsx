@@ -57,8 +57,7 @@ export default function NotificationDetailScreen() {
           publish_timestamp,
           category_id,
           status,
-          target_audience,
-          notification_categories:category_id (
+          notification_categories!category_id (
             id,
             name
           )
@@ -76,9 +75,7 @@ export default function NotificationDetailScreen() {
 
       const notificationWithCategory = {
         ...notificationData,
-        category: Array.isArray(notificationData.notification_categories) 
-          ? notificationData.notification_categories[0]
-          : notificationData.notification_categories,
+        category: notificationData.notification_categories,
       };
 
       setNotification(notificationWithCategory);

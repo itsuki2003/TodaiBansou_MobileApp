@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  TouchableOpacity,
 } from 'react-native';
 
 export interface TeacherCommentProps {
@@ -11,6 +12,8 @@ export interface TeacherCommentProps {
 }
 
 export default function TeacherComment({ content, createdAt }: TeacherCommentProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
   const formattedDate = new Date(createdAt).toLocaleDateString('ja-JP', {
     year: 'numeric',
     month: 'long',
@@ -19,9 +22,26 @@ export default function TeacherComment({ content, createdAt }: TeacherCommentPro
     minute: '2-digit',
   });
 
+  // 文字数制限（50文字）
+  const maxLength = 50;
+  const isLongContent = content.length > maxLength;
+  const displayContent = isLongContent && !isExpanded 
+    ? content.substring(0, maxLength) + '...' 
+    : content;
+
   return (
     <View style={styles.container}>
-      <Text style={styles.content}>{content}</Text>
+      <Text style={styles.content}>{displayContent}</Text>
+      {isLongContent && (
+        <TouchableOpacity
+          style={styles.expandButton}
+          onPress={() => setIsExpanded(!isExpanded)}
+        >
+          <Text style={styles.expandButtonText}>
+            {isExpanded ? '閉じる' : 'もっと読む'}
+          </Text>
+        </TouchableOpacity>
+      )}
       <Text style={styles.date}>{formattedDate}</Text>
     </View>
   );
@@ -45,5 +65,15 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     textAlign: 'right',
+  },
+  expandButton: {
+    alignSelf: 'flex-start',
+    marginTop: 8,
+    marginBottom: 8,
+  },
+  expandButtonText: {
+    fontSize: 14,
+    color: '#3B82F6',
+    fontWeight: '500',
   },
 });

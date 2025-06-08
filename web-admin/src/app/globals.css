@@ -1,8 +1,30 @@
 @import "tailwindcss";
 
 :root {
+  /* 東大伴走ブランドカラー */
+  --color-primary: #1d549d;
+  --color-primary-light: #a5bfff;
+  --color-primary-dark: #112a4d;
+  --color-accent: #e6f00f;
+  --color-accent-dark: #bac00c;
+  
+  /* システムカラー */
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #f8fafc;
+  --border: #e2e8f0;
+  --border-light: #f1f5f9;
+  
+  /* セマンティックカラー */
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: var(--color-primary);
+  
+  /* タイポグラフィ */
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --text-muted: #94a3b8;
 }
 
 @theme inline {
@@ -16,11 +38,62 @@
   :root {
     --background: #0a0a0a;
     --foreground: #ededed;
+    --surface: #1e293b;
+    --border: #334155;
+    --border-light: #475569;
+    --text-primary: #f8fafc;
+    --text-secondary: #cbd5e1;
+    --text-muted: #94a3b8;
   }
+}
+
+/* グローバルスタイル */
+* {
+  box-sizing: border-box;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Hiragino Kaku Gothic ProN', 'Hiragino Sans', 'BIZ UDPGothic', 'Meiryo', system-ui, sans-serif;
+  line-height: 1.6;
+  font-feature-settings: "palt";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* スクロールバーのカスタマイズ */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
+
+/* フォーカス可視性の向上 */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+/* アニメーション設定 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }

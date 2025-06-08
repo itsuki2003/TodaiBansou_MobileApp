@@ -1,14 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
-import Constants from 'expo-constants';
 
-// Supabaseの設定情報を環境変数から取得
-const supabaseUrl = Constants.expoConfig?.extra?.supabaseUrl as string;
-const supabaseAnonKey = Constants.expoConfig?.extra?.supabaseAnonKey as string;
-
-// 設定値が存在しない場合のエラーハンドリング
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabaseの環境変数が設定されていません。');
-}
+// Supabaseの設定情報
+const supabaseUrl = 'https://nhsuhxifnmvnxtcndihm.supabase.co';
+const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oc3VoeGlmbm12bnh0Y25kaWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxMDE3OTUsImV4cCI6MjA2NDY3Nzc5NX0.B0fUGEtSQIeFtVMWyXdLm47LyhR7br01sMLBg43ENwo';
 
 // Supabaseクライアントの初期化
 export const supabase = createClient(supabaseUrl, supabaseAnonKey); 

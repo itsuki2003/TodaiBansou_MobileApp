@@ -27,7 +27,7 @@ type LessonSlot = {
   start_time: string;
   end_time: string;
   slot_type: '通常授業' | '固定面談' | '振替授業' | '追加授業';
-  status: '予定通り' | '実施済み' | '欠席' | '振替済み';
+  status: '予定通り' | '実施済み' | '欠席' | '振替済み（振替元）';
   teacher_id: string;
   teachers: Teacher;
   google_meet_link: string | null;
@@ -288,14 +288,34 @@ export default function CalendarScreen() {
 
   const handlePrevMonth = () => {
     const newDate = new Date(currentMonth);
+    const today = new Date();
+    
+    // 過去6ヶ月までしか遡れない制限
+    const sixMonthsAgo = new Date(today);
+    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    
     newDate.setMonth(newDate.getMonth() - 1);
-    setCurrentMonth(newDate);
+    
+    // 制限をチェック
+    if (newDate >= sixMonthsAgo) {
+      setCurrentMonth(newDate);
+    }
   };
 
   const handleNextMonth = () => {
     const newDate = new Date(currentMonth);
+    const today = new Date();
+    
+    // 未来3ヶ月までしか進めない制限
+    const threeMonthsLater = new Date(today);
+    threeMonthsLater.setMonth(today.getMonth() + 3);
+    
     newDate.setMonth(newDate.getMonth() + 1);
-    setCurrentMonth(newDate);
+    
+    // 制限をチェック
+    if (newDate <= threeMonthsLater) {
+      setCurrentMonth(newDate);
+    }
   };
 
   const handleDateSelect = (date: string, disabled: boolean) => {
@@ -368,12 +388,68 @@ export default function CalendarScreen() {
       </View>
       
       <View style={styles.calendarHeader}>
-        <TouchableOpacity onPress={handlePrevMonth}>
-          <ChevronLeft size={24} color="#64748B" />
+        <TouchableOpacity 
+          onPress={handlePrevMonth}
+          disabled={(() => {
+            const today = new Date();
+            const sixMonthsAgo = new Date(today);
+            sixMonthsAgo.setMonth(today.getMonth() - 6);
+            const prevMonth = new Date(currentMonth);
+            prevMonth.setMonth(prevMonth.getMonth() - 1);
+            return prevMonth < sixMonthsAgo;
+          })()}
+          style={(() => {
+            const today = new Date();
+            const sixMonthsAgo = new Date(today);
+            sixMonthsAgo.setMonth(today.getMonth() - 6);
+            const prevMonth = new Date(currentMonth);
+            prevMonth.setMonth(prevMonth.getMonth() - 1);
+            return prevMonth < sixMonthsAgo ? styles.disabledButton : {};
+          })()}
+        >
+          <ChevronLeft 
+            size={24} 
+            color={(() => {
+              const today = new Date();
+              const sixMonthsAgo = new Date(today);
+              sixMonthsAgo.setMonth(today.getMonth() - 6);
+              const prevMonth = new Date(currentMonth);
+              prevMonth.setMonth(prevMonth.getMonth() - 1);
+              return prevMonth < sixMonthsAgo ? "#CBD5E1" : "#64748B";
+            })()} 
+          />
         </TouchableOpacity>
         <Text style={styles.monthTitle}>{month.title}</Text>
-        <TouchableOpacity onPress={handleNextMonth}>
-          <ChevronRight size={24} color="#64748B" />
+        <TouchableOpacity 
+          onPress={handleNextMonth}
+          disabled={(() => {
+            const today = new Date();
+            const threeMonthsLater = new Date(today);
+            threeMonthsLater.setMonth(today.getMonth() + 3);
+            const nextMonth = new Date(currentMonth);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            return nextMonth > threeMonthsLater;
+          })()}
+          style={(() => {
+            const today = new Date();
+            const threeMonthsLater = new Date(today);
+            threeMonthsLater.setMonth(today.getMonth() + 3);
+            const nextMonth = new Date(currentMonth);
+            nextMonth.setMonth(nextMonth.getMonth() + 1);
+            return nextMonth > threeMonthsLater ? styles.disabledButton : {};
+          })()}
+        >
+          <ChevronRight 
+            size={24} 
+            color={(() => {
+              const today = new Date();
+              const threeMonthsLater = new Date(today);
+              threeMonthsLater.setMonth(today.getMonth() + 3);
+              const nextMonth = new Date(currentMonth);
+              nextMonth.setMonth(nextMonth.getMonth() + 1);
+              return nextMonth > threeMonthsLater ? "#CBD5E1" : "#64748B";
+            })()} 
+          />
         </TouchableOpacity>
       </View>
       
@@ -439,6 +515,7 @@ export default function CalendarScreen() {
               isAbsent={classItem.status === '欠席'}
               isTransferred={classItem.slot_type === '振替授業'}
               isAdditional={classItem.slot_type === '追加授業'}
+              googleMeetLink={classItem.google_meet_link}
               onPress={() => handleClassPress(classItem)}
             />
           ))
@@ -716,6 +793,9 @@ const styles = StyleSheet.create({
   confirmButtonText: {
     color: '#FFFFFF',
     fontWeight: '500',
+  },
+  disabledButton: {
+    opacity: 0.4,
   },
   loadingContainer: {
     flex: 1,

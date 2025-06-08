@@ -27,7 +27,7 @@ import {
 
 export default function AbsenceRequestScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, selectedStudent } = useAuth();
   const params = useLocalSearchParams();
   const lessonId = params.lessonId as string;
 
@@ -43,7 +43,7 @@ export default function AbsenceRequestScreen() {
 
   // 授業情報の取得
   const fetchLessonData = useCallback(async () => {
-    if (!user || !lessonId) return;
+    if (!user || !selectedStudent || !lessonId) return;
 
     setLoading(true);
     setError(null);
@@ -57,7 +57,7 @@ export default function AbsenceRequestScreen() {
           absence_requests (id, status)
         `)
         .eq('id', lessonId)
-        .eq('student_id', user.id)
+        .eq('student_id', selectedStudent.id)
         .single();
 
       if (fetchError) throw fetchError;
@@ -142,7 +142,7 @@ export default function AbsenceRequestScreen() {
     } finally {
       setLoading(false);
     }
-  }, [user, lessonId]);
+  }, [user, selectedStudent, lessonId]);
 
   // フォームバリデーション
   const validateForm = (): boolean => {
@@ -186,10 +186,11 @@ export default function AbsenceRequestScreen() {
     setError(null);
 
     try {
+      // 欠席申請を挿入
       const { data, error: submitError } = await supabase
         .from('absence_requests')
         .insert([{
-          student_id: user!.id,
+          student_id: selectedStudent!.id,
           lesson_slot_id: formData.lesson_slot_id,
           reason: formData.reason.trim(),
           request_timestamp: new Date().toISOString(),
@@ -199,6 +200,17 @@ export default function AbsenceRequestScreen() {
         .single();
 
       if (submitError) throw submitError;
+
+      // 同時に授業ステータスを「欠席」に更新
+      const { error: updateLessonError } = await supabase
+        .from('lesson_slots')
+        .update({ status: '欠席' })
+        .eq('id', formData.lesson_slot_id);
+
+      if (updateLessonError) {
+        console.error('授業ステータス更新エラー:', updateLessonError);
+        // エラーがあっても欠席申請自体は成功しているので続行
+      }
 
       // 成功メッセージ
       Alert.alert(

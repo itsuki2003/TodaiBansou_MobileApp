@@ -10,18 +10,31 @@ const config: Config = {
     extend: {
       // 東大伴走ブランドカラー
       colors: {
-        // プライマリカラー（東大ブルーをベース）
+        // メインブランドカラー（東大ブルー系）- #1d549d
         primary: {
-          50: '#eff6ff',
-          100: '#dbeafe',
-          200: '#bfdbfe',
-          300: '#93c5fd',
-          400: '#60a5fa',
-          500: '#3b82f6',
-          600: '#2563eb',
-          700: '#1d4ed8',
-          800: '#1e40af',
-          900: '#1e3a8a',
+          50: '#f0f4ff',
+          100: '#e0eaff', 
+          200: '#c7d7ff',
+          300: '#a5bfff',
+          400: '#839eff',
+          500: '#1d549d', // メインブランドカラー
+          600: '#1a4a89',
+          700: '#173f75',
+          800: '#143461',
+          900: '#112a4d',
+        },
+        // アクセントカラー（ブライトイエロー系）- #e6f00f
+        accent: {
+          50: '#fffef0',
+          100: '#fffbe0',
+          200: '#fff6c7',
+          300: '#ffefa5',
+          400: '#ffe683',
+          500: '#e6f00f', // アクセントブランドカラー
+          600: '#d0d80e',
+          700: '#bac00c',
+          800: '#a4a80b',
+          900: '#8e9009',
         },
         // 教育・学習を表現する温かみのあるセカンダリカラー
         secondary: {
@@ -194,13 +207,26 @@ const config: Config = {
           'height': '100%',
           'transition': 'width 0.3s ease-out',
         },
-        // カードのホバーエフェクト
+        // 新しいカードデザインシステム
+        '.card-base': {
+          'background-color': '#ffffff',
+          'border-radius': theme('borderRadius.xl'),
+          'box-shadow': theme('boxShadow.soft'),
+          'border': '1px solid',
+          'border-color': theme('colors.gray.100'),
+          'transition': 'all 0.3s ease-out',
+        },
         '.card-interactive': {
-          'transition': 'all 0.2s ease-out',
+          'cursor': 'pointer',
           '&:hover': {
-            'transform': 'translateY(-2px)',
-            'box-shadow': theme('boxShadow.card-hover'),
+            'transform': 'translateY(-4px)',
+            'box-shadow': theme('boxShadow.strong'),
+            'border-color': theme('colors.primary.200'),
           },
+        },
+        '.card-elevated': {
+          'box-shadow': theme('boxShadow.medium'),
+          'border': 'none',
         },
         // バッジスタイル
         '.badge-status': {
@@ -211,13 +237,68 @@ const config: Config = {
           'font-size': theme('fontSize.xs'),
           'font-weight': '500',
         },
-        // ボタンのフォーカススタイル
-        '.btn-focus': {
+        // 新しいボタンデザインシステム
+        '.btn-base': {
+          'display': 'inline-flex',
+          'align-items': 'center',
+          'justify-content': 'center',
+          'font-weight': '600',
+          'border-radius': theme('borderRadius.lg'),
+          'transition': 'all 0.2s ease-out',
+          'cursor': 'pointer',
+          'user-select': 'none',
           '&:focus': {
             'outline': 'none',
             'ring-width': '2px',
-            'ring-color': theme('colors.primary.500'),
             'ring-offset-width': '2px',
+          },
+          '&:disabled': {
+            'opacity': '0.5',
+            'cursor': 'not-allowed',
+            'transform': 'none',
+          },
+        },
+        '.btn-primary': {
+          'background-color': theme('colors.primary.500'),
+          'color': '#ffffff',
+          'padding': `${theme('spacing.3')} ${theme('spacing.6')}`,
+          'box-shadow': theme('boxShadow.md'),
+          '&:hover:not(:disabled)': {
+            'background-color': theme('colors.primary.600'),
+            'transform': 'translateY(-1px)',
+            'box-shadow': theme('boxShadow.lg'),
+          },
+          '&:focus': {
+            'ring-color': theme('colors.primary.500'),
+          },
+        },
+        '.btn-accent': {
+          'background-color': theme('colors.accent.500'),
+          'color': theme('colors.gray.900'),
+          'padding': `${theme('spacing.3')} ${theme('spacing.6')}`,
+          'box-shadow': theme('boxShadow.md'),
+          '&:hover:not(:disabled)': {
+            'background-color': theme('colors.accent.600'),
+            'transform': 'translateY(-1px)',
+            'box-shadow': theme('boxShadow.lg'),
+          },
+          '&:focus': {
+            'ring-color': theme('colors.accent.500'),
+          },
+        },
+        '.btn-secondary': {
+          'background-color': '#ffffff',
+          'color': theme('colors.primary.600'),
+          'border': '1px solid',
+          'border-color': theme('colors.primary.300'),
+          'padding': `${theme('spacing.3')} ${theme('spacing.6')}`,
+          '&:hover:not(:disabled)': {
+            'background-color': theme('colors.primary.50'),
+            'border-color': theme('colors.primary.400'),
+            'transform': 'translateY(-1px)',
+          },
+          '&:focus': {
+            'ring-color': theme('colors.primary.500'),
           },
         },
       }

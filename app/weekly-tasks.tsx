@@ -9,9 +9,9 @@ import {
   Alert,
   Dimensions,
   Animated,
-  PanGestureHandler,
-  GestureHandlerRootView,
+  RefreshControl,
 } from 'react-native';
+import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format, startOfWeek, addWeeks, subWeeks, addDays } from 'date-fns';
 import { ja } from 'date-fns/locale';
@@ -27,7 +27,7 @@ const { width: screenWidth } = Dimensions.get('window');
 
 export default function WeeklyTasksScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, selectedStudent } = useAuth();
   const params = useLocalSearchParams();
   
   // 初期週の設定（URLパラメータから取得、なければ今週）
@@ -46,7 +46,7 @@ export default function WeeklyTasksScreen() {
 
   // 週間データの取得
   const fetchWeeklyData = useCallback(async (weekStartDate: string, showLoading = true) => {
-    if (!user) return;
+    if (!user || !selectedStudent) return;
 
     if (showLoading) {
       setLoading(true);
@@ -63,7 +63,7 @@ export default function WeeklyTasksScreen() {
       const { data: todoListData, error: todoListError } = await supabase
         .from('todo_lists')
         .select('*')
-        .eq('student_id', user.id)
+        .eq('student_id', selectedStudent.id)
         .eq('target_week_start_date', weekStartDate)
         .maybeSingle();
 
@@ -179,7 +179,7 @@ export default function WeeklyTasksScreen() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [user]);
+  }, [user, selectedStudent]);
 
   // ナビゲーション情報の更新
   const updateNavigation = useCallback((weekStartDate: string) => {
@@ -373,8 +373,14 @@ export default function WeeklyTasksScreen() {
           <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
-            refreshing={refreshing}
-            onRefresh={handleRefresh}
+            refreshControl={
+              <RefreshControl
+                refreshing={refreshing}
+                onRefresh={handleRefresh}
+                tintColor="#3B82F6"
+                colors={["#3B82F6"]}
+              />
+            }
           >
             <View style={styles.daysContainer}>
               {weeklyData.days.map((day, index) => (

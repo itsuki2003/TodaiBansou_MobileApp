@@ -42,7 +42,7 @@ type ChatMessage = {
   content: string;
   sent_at: string;
   sender_user_id: string;
-  sender_role: 'student' | 'teacher';
+  sender_role: '生徒' | '保護者' | '講師' | '運営' | 'システム';
   attachment_info: {
     type: 'image' | 'pdf';
     url: string;
@@ -103,12 +103,23 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
 
       if (queryError) throw queryError;
 
+      const getSenderName = (role: string) => {
+        switch (role) {
+          case '生徒': return '生徒';
+          case '保護者': return '保護者';
+          case '講師': return '講師';
+          case '運営': return '運営';
+          case 'システム': return 'システム';
+          default: return '不明';
+        }
+      };
+
       const formattedMessages = data.map(msg => ({
         id: msg.id,
         content: msg.content,
         sender: {
           id: msg.sender_user_id,
-          name: msg.sender_role === 'student' ? '生徒' : '講師',
+          name: getSenderName(msg.sender_role),
           avatar: null, // 暫定的にnull
         },
         timestamp: new Date(msg.sent_at),
@@ -139,8 +150,18 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         async (payload) => {
           const newMessage = payload.new;
           
-          // 送信者の情報（暫定）
-          const senderName = newMessage.sender_role === 'student' ? '生徒' : '講師';
+          // 送信者の情報
+          const getSenderName = (role: string) => {
+            switch (role) {
+              case '生徒': return '生徒';
+              case '保護者': return '保護者';
+              case '講師': return '講師';
+              case '運営': return '運営';
+              case 'システム': return 'システム';
+              default: return '不明';
+            }
+          };
+          const senderName = getSenderName(newMessage.sender_role);
 
           const message: Message = {
             id: newMessage.id,
@@ -221,7 +242,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           chat_group_id: chatGroupId,
           content: inputText.trim(),
           sender_user_id: user.id,
-          sender_role: userRole,
+          sender_role: userRole === 'student' ? '生徒' : '講師',
           attachment_info: attachmentInfo,
         });
 
@@ -322,7 +343,15 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+        <TouchableOpacity style={styles.backButton} onPress={() => {
+          try {
+            router.push('/(tabs)/chat');
+          } catch (error) {
+            console.error('Navigation error:', error);
+            // フォールバック: router.back()を試行
+            router.back();
+          }
+        }}>
           <ArrowLeft size={24} color="#1E293B" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>チャット</Text>

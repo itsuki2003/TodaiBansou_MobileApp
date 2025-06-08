@@ -15,6 +15,9 @@ export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
   },
 });
 
+// 互換性のためのデフォルトエクスポート
+export { createClient };
+
 // 初期パスワード生成関数
 export function generateInitialPassword(length: number = 12): string {
   const charset = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*';

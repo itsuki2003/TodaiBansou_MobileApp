@@ -127,24 +127,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // まず administrators テーブルを確認
       const { data: adminData, error: adminError } = await supabase
         .from('administrators')
-        .select('full_name, account_status')
+        .select('id, full_name, account_status')
         .eq('user_id', userId)
         .eq('account_status', '有効')
         .maybeSingle(); // single()の代わりにmaybeSingle()を使用
 
       if (adminData && !adminError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('👤 管理者として認証成功');
-        }
-        setUser({
+        console.log('👤 管理者として認証成功', adminData);
+        const userWithProfile = {
           id: userId,
           email,
-          role: 'admin',
+          role: 'admin' as const,
           profile: {
+            id: adminData.id,
             full_name: adminData.full_name,
             account_status: adminData.account_status,
           },
-        });
+        };
+        console.log('👤 設定したユーザー情報:', userWithProfile);
+        setUser(userWithProfile);
         setLoading(false);
         setProcessingSession(null);
         return;
@@ -153,24 +154,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // 次に teachers テーブルを確認
       const { data: teacherData, error: teacherError } = await supabase
         .from('teachers')
-        .select('full_name, account_status')
+        .select('id, full_name, account_status')
         .eq('user_id', userId)
         .eq('account_status', '有効')
         .maybeSingle(); // single()の代わりにmaybeSingle()を使用
 
       if (teacherData && !teacherError) {
-        if (process.env.NODE_ENV === 'development') {
-          console.log('👤 講師として認証成功');
-        }
-        setUser({
+        console.log('👤 講師として認証成功', teacherData);
+        const userWithProfile = {
           id: userId,
           email,
-          role: 'teacher',
+          role: 'teacher' as const,
           profile: {
+            id: teacherData.id,
             full_name: teacherData.full_name,
             account_status: teacherData.account_status,
           },
-        });
+        };
+        console.log('👤 設定したユーザー情報:', userWithProfile);
+        setUser(userWithProfile);
         setLoading(false);
         setProcessingSession(null);
         return;

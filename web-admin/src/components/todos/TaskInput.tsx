@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 
 interface TaskInputProps {
-  onSubmit: (content: string) => Promise<void>;
+  onSubmit: (content: string) => void;
   onCancel: () => void;
   isProcessing: boolean;
 }
@@ -17,10 +17,10 @@ export default function TaskInput({ onSubmit, onCancel, isProcessing }: TaskInpu
     }
   }, []);
 
-  const handleSubmit = async () => {
+  const handleSubmit = () => {
     if (!content.trim() || isProcessing) return;
 
-    await onSubmit(content.trim());
+    onSubmit(content.trim());
     setContent('');
   };
 

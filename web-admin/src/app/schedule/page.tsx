@@ -57,7 +57,7 @@ export default function SchedulePage() {
     const startDateTime = new Date(`${slot.slot_date}T${slot.start_time}`);
     const endDateTime = new Date(`${slot.slot_date}T${slot.end_time}`);
 
-    return {
+    const event = {
       id: slot.id,
       title: `${slot.student_name} - ${slot.slot_type}`,
       start: startDateTime,
@@ -65,7 +65,12 @@ export default function SchedulePage() {
       resource: slot,
       className: getEventClassName(slot)
     };
+
+    console.log('📅 イベント変換:', { slot, event });
+    return event;
   });
+
+  console.log('📅 カレンダーイベント一覧:', calendarEvents);
 
   // 授業種別・ステータスに応じたCSSクラス
   function getEventClassName(slot: LessonSlotWithDetails): string {

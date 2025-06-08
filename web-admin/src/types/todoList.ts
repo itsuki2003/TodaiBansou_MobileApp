@@ -5,10 +5,18 @@ export interface TodoList {
   created_at: string;
   updated_at: string;
   student_id: string;
-  target_week_start_date: string; // YYYY-MM-DD 形式
-  list_creation_date: string;
+  target_week_start_date: string; // YYYY-MM-DD 形式（月曜日）
+  list_creation_date: string | null;
   status: '下書き' | '公開済み';
   notes: string | null;
+}
+
+export interface Student {
+  id: string;
+  full_name: string;
+  furigana_name: string | null;
+  grade: string | null;
+  status: string;
 }
 
 export interface Task {
@@ -46,11 +54,13 @@ export interface DayData {
   comments: TeacherComment[];
 }
 
-// 週間データ
+// 週間データ（管理画面用に拡張）
 export interface WeekData {
   todoList: TodoList | null;
+  student: Student | null;
   days: DayData[];
   weekStartDate: string;
+  permissions: TodoPermissions;
 }
 
 // タスク追加・更新用
@@ -97,12 +107,14 @@ export interface UpdateTodoListRequest {
 
 // 権限管理用
 export interface TodoPermissions {
-  canEditTasks: boolean;
-  canAddTasks: boolean;
-  canDeleteTasks: boolean;
-  canReorderTasks: boolean;
-  canEditComments: boolean;
-  canPublish: boolean;
+  canEditTasks: boolean;    // タスク編集権限（面談担当講師・運営）
+  canAddTasks: boolean;     // タスク追加権限
+  canDeleteTasks: boolean;  // タスク削除権限
+  canReorderTasks: boolean; // タスク順序変更権限
+  canAddComments: boolean;  // コメント追加権限（全ての担当講師・運営）
+  canEditComments: boolean; // コメント編集権限（自分のコメントのみ）
+  canPublish: boolean;      // 公開権限
+  role: 'admin' | 'interview_teacher' | 'lesson_teacher';
 }
 
 // ドラッグ&ドロップ用

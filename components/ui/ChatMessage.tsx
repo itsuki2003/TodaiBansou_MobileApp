@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Image, Pressable, Linking, Alert } from 'react-native';
 import { FileText, Download } from 'lucide-react-native';
+import Autolink from 'react-native-autolink';
 
 interface ChatMessageProps {
   message: {
@@ -30,6 +31,21 @@ export default function ChatMessage({ message, onAttachmentPress }: ChatMessageP
       minute: '2-digit',
       hour12: false,
     });
+  };
+
+  // Handle URL press
+  const handleUrlPress = async (url: string) => {
+    try {
+      const supported = await Linking.canOpenURL(url);
+      if (supported) {
+        await Linking.openURL(url);
+      } else {
+        Alert.alert('エラー', 'このURLを開くことができません');
+      }
+    } catch (err) {
+      console.error('Error opening URL:', err);
+      Alert.alert('エラー', 'URLを開く際にエラーが発生しました');
+    }
   };
   
   return (
@@ -63,12 +79,18 @@ export default function ChatMessage({ message, onAttachmentPress }: ChatMessageP
           styles.bubble,
           message.isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble
         ]}>
-          <Text style={[
-            styles.messageText,
-            message.isCurrentUser ? styles.currentUserText : styles.otherUserText
-          ]}>
-            {message.content}
-          </Text>
+          <Autolink
+            text={message.content}
+            style={[
+              styles.messageText,
+              message.isCurrentUser ? styles.currentUserText : styles.otherUserText
+            ]}
+            linkStyle={[
+              styles.linkText,
+              message.isCurrentUser ? styles.currentUserLink : styles.otherUserLink
+            ]}
+            onPress={handleUrlPress}
+          />
           
           {message.attachments && message.attachments.length > 0 && (
             <View style={styles.attachmentsContainer}>
@@ -193,5 +215,14 @@ const styles = StyleSheet.create({
     marginHorizontal: 8,
     fontSize: 12,
     color: '#1E293B',
+  },
+  linkText: {
+    textDecorationLine: 'underline',
+  },
+  currentUserLink: {
+    color: '#BFDBFE', // 水色系の明るい色
+  },
+  otherUserLink: {
+    color: '#3B82F6', // 青色
   },
 });

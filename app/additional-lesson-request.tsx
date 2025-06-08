@@ -28,7 +28,7 @@ import {
 
 export default function AdditionalLessonRequestScreen() {
   const router = useRouter();
-  const { user } = useAuth();
+  const { user, selectedStudent } = useAuth();
 
   const [formData, setFormData] = useState<AdditionalLessonRequestFormData>({
     requested_date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
@@ -56,7 +56,7 @@ export default function AdditionalLessonRequestScreen() {
 
   // 講師一覧の取得
   const fetchTeachers = useCallback(async () => {
-    if (!user) return;
+    if (!user || !selectedStudent) return;
 
     try {
       // 担当講師の取得
@@ -71,7 +71,7 @@ export default function AdditionalLessonRequestScreen() {
             account_status
           )
         `)
-        .eq('student_id', user.id)
+        .eq('student_id', selectedStudent.id)
         .eq('status', '有効');
 
       if (assignmentsError) throw assignmentsError;
@@ -107,7 +107,7 @@ export default function AdditionalLessonRequestScreen() {
         recoverable: true,
       });
     }
-  }, [user, formData.teacher_id]);
+  }, [user, selectedStudent, formData.teacher_id]);
 
   // フォームバリデーション
   const validateForm = (): boolean => {
@@ -193,7 +193,7 @@ export default function AdditionalLessonRequestScreen() {
       const { data: existingRequests, error: checkError } = await supabase
         .from('additional_lesson_requests')
         .select('id, status')
-        .eq('student_id', user!.id)
+        .eq('student_id', selectedStudent!.id)
         .eq('requested_date', formData.requested_date)
         .eq('requested_start_time', formData.requested_start_time)
         .eq('requested_end_time', formData.requested_end_time)
@@ -236,7 +236,7 @@ export default function AdditionalLessonRequestScreen() {
       const { data, error: submitError } = await supabase
         .from('additional_lesson_requests')
         .insert([{
-          student_id: user!.id,
+          student_id: selectedStudent!.id,
           requested_date: formData.requested_date,
           requested_start_time: formData.requested_start_time,
           requested_end_time: formData.requested_end_time,

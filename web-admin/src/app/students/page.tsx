@@ -8,6 +8,8 @@ import Header from '@/components/ui/Header';
 import DropdownMenu, { AlertDialog, DropdownMenuItem } from '@/components/ui/DropdownMenu';
 import Breadcrumb, { breadcrumbPaths } from '@/components/ui/Breadcrumb';
 import StudentCard, { StudentRowTablet } from '@/components/students/StudentCard';
+import { Card, CardContent } from '@/components/ui/Card';
+import { Button } from '@/components/ui/Button';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PageLoader } from '@/components/ui/common/AppLoader';
 import { ErrorDisplay } from '@/components/ui/common/ErrorDisplay';
@@ -212,7 +214,7 @@ export default function StudentsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <Header />
       <div className="max-w-7xl mx-auto p-8">
         {/* パンくずリスト */}
@@ -227,23 +229,25 @@ export default function StudentsPage() {
 
         {/* ヘッダー */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">生徒管理</h1>
-          <div className="flex justify-between items-center">
-            <p className="text-gray-600">
-              全{students.length}名の生徒が登録されています
-            </p>
-            <Link 
-              href="/students/new"
-              className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-md font-medium transition-colors inline-block"
-            >
-              新規生徒登録
-            </Link>
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl font-bold text-primary-700 mb-2">生徒管理</h1>
+              <p className="text-gray-600">
+                全{students.length}名の生徒が登録されています
+              </p>
+            </div>
+            <Button asChild>
+              <Link href="/students/new">
+                新規生徒登録
+              </Link>
+            </Button>
           </div>
         </div>
 
         {/* 検索・フィルター */}
-        <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4 md:p-6 mb-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div>
               <label htmlFor="search" className="block text-sm font-medium text-gray-700 mb-2">
                 生徒名・フリガナで検索
@@ -289,8 +293,9 @@ export default function StudentsPage() {
                 ))}
               </select>
             </div>
-          </div>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* 検索結果の件数表示 */}
         {filteredStudents.length !== students.length && (
@@ -302,7 +307,7 @@ export default function StudentsPage() {
         )}
 
         {/* デスクトップ用テーブル */}
-        <div className="hidden lg:block bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <Card className="hidden lg:block overflow-hidden" padding="none">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -379,10 +384,10 @@ export default function StudentsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         {/* タブレット用簡略テーブル */}
-        <div className="hidden md:block lg:hidden bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+        <Card className="hidden md:block lg:hidden overflow-hidden" padding="none">
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
               <thead className="bg-gray-50">
@@ -415,7 +420,7 @@ export default function StudentsPage() {
               </tbody>
             </table>
           </div>
-        </div>
+        </Card>
 
         {/* モバイル用カードレイアウト */}
         <div className="md:hidden space-y-4">

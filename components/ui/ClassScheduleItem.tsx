@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Video, Users } from 'lucide-react-native';
+import { View, Text, StyleSheet, Pressable, Linking, Alert } from 'react-native';
+import { Video, Users, ExternalLink } from 'lucide-react-native';
 
 interface ClassScheduleItemProps {
   type: 'lesson' | 'meeting';
@@ -10,6 +10,7 @@ interface ClassScheduleItemProps {
   isAbsent?: boolean;
   isTransferred?: boolean;
   isAdditional?: boolean;
+  googleMeetLink?: string;
   onPress: () => void;
 }
 
@@ -21,6 +22,7 @@ export default function ClassScheduleItem({
   isAbsent = false,
   isTransferred = false,
   isAdditional = false,
+  googleMeetLink,
   onPress,
 }: ClassScheduleItemProps) {
   // Determine style based on type and status
@@ -33,6 +35,25 @@ export default function ClassScheduleItem({
   
   // Icon based on type
   const IconComponent = type === 'lesson' ? Video : Users;
+
+  // Handle Google Meet link press
+  const handleGoogleMeetPress = async (event: any) => {
+    event.stopPropagation(); // Prevent triggering the main onPress
+    
+    if (!googleMeetLink) return;
+    
+    try {
+      const supported = await Linking.canOpenURL(googleMeetLink);
+      if (supported) {
+        await Linking.openURL(googleMeetLink);
+      } else {
+        Alert.alert('エラー', 'Google Meetを開くことができません');
+      }
+    } catch (err) {
+      console.error('Error opening Google Meet:', err);
+      Alert.alert('エラー', 'Google Meetを開く際にエラーが発生しました');
+    }
+  };
   
   return (
     <Pressable 
@@ -62,9 +83,16 @@ export default function ClassScheduleItem({
         )}
       </View>
       
-      <View style={styles.joinButton}>
-        <Text style={styles.joinText}>参加</Text>
-      </View>
+      {googleMeetLink && !isAbsent ? (
+        <Pressable style={styles.meetButton} onPress={handleGoogleMeetPress}>
+          <ExternalLink size={14} color="#FFFFFF" />
+          <Text style={styles.meetText}>Meet</Text>
+        </Pressable>
+      ) : (
+        <View style={styles.joinButton}>
+          <Text style={styles.joinText}>参加</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -139,6 +167,20 @@ const styles = StyleSheet.create({
     borderRadius: 4,
   },
   joinText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  meetButton: {
+    backgroundColor: '#10B981',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 4,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  meetText: {
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '500',

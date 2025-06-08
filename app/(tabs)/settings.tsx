@@ -43,7 +43,7 @@ export default function SettingsScreen() {
           id,
           title,
           publish_timestamp,
-          notification_categories:category_id (
+          notification_categories!category_id (
             name
           )
         `)
@@ -111,13 +111,11 @@ export default function SettingsScreen() {
   };
   
   const handleTerms = () => {
-    // Navigate to terms screen
-    Alert.alert('利用規約画面へ移動します');
+    router.push('/terms-of-service' as any);
   };
   
   const handlePrivacy = () => {
-    // Navigate to privacy policy screen
-    Alert.alert('プライバシーポリシー画面へ移動します');
+    router.push('/privacy-policy' as any);
   };
   
   const handleLogout = () => {

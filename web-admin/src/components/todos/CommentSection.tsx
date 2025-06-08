@@ -1,7 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { TeacherComment } from '@/types/todoList';
 
-interface CommentSectionProps {
+// 新システム用インターフェース
+interface NewCommentSectionProps {
+  targetDate: string;
+  comments: TeacherComment[];
+  onSave: (content: string, commentId?: string) => void;
+  isProcessing: boolean;
+}
+
+// 既存システム用インターフェース  
+interface OldCommentSectionProps {
   targetDate: string;
   comments: TeacherComment[];
   currentUserComment: TeacherComment | null;
@@ -9,121 +18,158 @@ interface CommentSectionProps {
   isProcessing: boolean;
 }
 
-export default function CommentSection({
-  targetDate,
-  comments,
-  currentUserComment,
-  onSave,
-  isProcessing,
-}: CommentSectionProps) {
-  const [content, setContent] = useState('');
-  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+type CommentSectionProps = NewCommentSectionProps | OldCommentSectionProps;
 
-  // 既存コメントを読み込み
-  useEffect(() => {
-    setContent(currentUserComment?.comment_content || '');
-    setHasUnsavedChanges(false);
-  }, [currentUserComment]);
+export default function CommentSection(props: CommentSectionProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState('');
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
 
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    setHasUnsavedChanges(newContent !== (currentUserComment?.comment_content || ''));
+  // プロパティの型判定
+  const isNewInterface = (props: CommentSectionProps): props is NewCommentSectionProps => {
+    return !('currentUserComment' in props);
+  };
+
+  // 共通データの抽出
+  const targetDate = props.targetDate;
+  const comments = props.comments;
+  const isProcessing = props.isProcessing;
+
+  // 現在のユーザーのコメントを取得
+  const currentUserComment = isNewInterface(props) 
+    ? comments.find(c => c.teacher_id === 'current-teacher-id') // TODO: 実際のユーザーIDを使用
+    : props.currentUserComment;
+
+  const handleStartEdit = (comment?: TeacherComment) => {
+    setIsEditing(true);
+    setEditContent(comment?.comment_content || '');
+    setEditingCommentId(comment?.id || null);
   };
 
   const handleSave = async () => {
-    if (isProcessing) return;
-    
-    await onSave(targetDate, content);
-    setHasUnsavedChanges(false);
+    if (editContent.trim()) {
+      if (isNewInterface(props)) {
+        // 新システム
+        props.onSave(editContent.trim(), editingCommentId || undefined);
+      } else {
+        // 既存システム
+        await props.onSave(targetDate, editContent.trim());
+      }
+      setIsEditing(false);
+      setEditContent('');
+      setEditingCommentId(null);
+    }
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+    setEditContent('');
+    setEditingCommentId(null);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSave();
+    } else if (e.key === 'Escape') {
+      handleCancel();
     }
   };
 
-  // 他の講師のコメントを表示
-  const otherComments = comments.filter(c => c.id !== currentUserComment?.id);
-
   return (
     <div className="border-t border-gray-200 pt-4">
-      <div className="space-y-3">
-        {/* 自分のコメント入力エリア */}
-        <div>
-          <label className="block text-xs font-medium text-gray-700 mb-2">
-            講師コメント
-          </label>
-          <div className="space-y-2">
-            <textarea
-              value={content}
-              onChange={(e) => handleContentChange(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="この日のコメントを入力... (Ctrl+Enter: 保存)"
-              className="w-full p-2 text-sm border border-gray-200 rounded-md resize-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              rows={3}
-              disabled={isProcessing}
-            />
-            
-            {hasUnsavedChanges && (
-              <div className="flex items-center justify-between">
-                <p className="text-xs text-amber-600">
-                  未保存の変更があります
-                </p>
-                <button
-                  onClick={handleSave}
-                  disabled={isProcessing}
-                  className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 rounded-md transition-colors inline-flex items-center"
-                >
-                  {isProcessing ? (
-                    <>
-                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-white mr-1"></div>
-                      保存中...
-                    </>
-                  ) : (
-                    '保存'
-                  )}
-                </button>
+      <div className="mb-2">
+        <h4 className="text-xs font-medium text-gray-700 uppercase tracking-wide">
+          講師コメント
+        </h4>
+      </div>
+
+      {/* 既存のコメント一覧 */}
+      {comments.length > 0 && (
+        <div className="space-y-2 mb-3">
+          {comments.map((comment) => (
+            <div
+              key={comment.id}
+              className="bg-gray-50 rounded-md p-3 text-sm"
+            >
+              <div className="flex items-start justify-between mb-1">
+                <span className="font-medium text-gray-700">
+                  {comment.teacher?.full_name || '講師'}
+                </span>
+                <span className="text-xs text-gray-500">
+                  {new Date(comment.created_at).toLocaleDateString('ja-JP', {
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                </span>
               </div>
-            )}
+              <p className="text-gray-800 leading-relaxed">
+                {comment.comment_content}
+              </p>
+              
+              {/* 編集ボタン（自分のコメントの場合のみ） */}
+              {comment.teacher_id === 'current-teacher-id' && (
+                <button
+                  onClick={() => handleStartEdit(comment)}
+                  disabled={isProcessing}
+                  className="mt-2 text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                >
+                  編集
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* コメント入力・編集エリア */}
+      {isEditing ? (
+        <div className="space-y-2">
+          <textarea
+            value={editContent}
+            onChange={(e) => setEditContent(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+            rows={3}
+            placeholder="コメントを入力... (Ctrl/Cmd+Enter: 保存, Esc: キャンセル)"
+            autoFocus
+            disabled={isProcessing}
+          />
+          <div className="flex gap-2">
+            <button
+              onClick={handleSave}
+              disabled={!editContent.trim() || isProcessing}
+              className="px-3 py-1 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 rounded-md transition-colors"
+            >
+              {isProcessing ? '保存中...' : '保存'}
+            </button>
+            <button
+              onClick={handleCancel}
+              disabled={isProcessing}
+              className="px-3 py-1 text-xs font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 disabled:bg-gray-50 rounded-md transition-colors"
+            >
+              キャンセル
+            </button>
           </div>
         </div>
+      ) : (
+        <button
+          onClick={() => handleStartEdit()}
+          disabled={isProcessing}
+          className="w-full py-2 px-3 text-sm text-gray-600 hover:text-gray-900 border border-gray-200 hover:border-gray-300 rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {currentUserComment ? 'コメントを編集' : '+ コメントを追加'}
+        </button>
+      )}
 
-        {/* 他の講師のコメント表示 */}
-        {otherComments.length > 0 && (
-          <div className="pt-2 border-t border-gray-100">
-            <p className="text-xs font-medium text-gray-700 mb-2">
-              他の講師のコメント
-            </p>
-            <div className="space-y-2">
-              {otherComments.map((comment) => (
-                <div
-                  key={comment.id}
-                  className="bg-gray-50 rounded-md p-3"
-                >
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="text-xs font-medium text-gray-700">
-                      {comment.teacher?.full_name || '講師'}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {new Date(comment.updated_at).toLocaleDateString('ja-JP', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-800 whitespace-pre-wrap">
-                    {comment.comment_content}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+      {/* ヘルプテキスト */}
+      {!isEditing && (
+        <p className="mt-2 text-xs text-gray-500">
+          この日のタスクについて保護者や生徒にフィードバックを残せます
+        </p>
+      )}
     </div>
   );
 }

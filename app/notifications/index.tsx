@@ -50,8 +50,7 @@ export default function NotificationListScreen() {
           publish_timestamp,
           category_id,
           status,
-          target_audience,
-          notification_categories:category_id (
+          notification_categories!category_id (
             id,
             name
           )

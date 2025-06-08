@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,8 @@ import {
   TouchableOpacity,
   SafeAreaView,
   Modal,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -63,9 +65,77 @@ export default function HomeScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // アニメーション関連のstate (TaskItem側で個別管理も検討)
-  const [celebrateTaskId, setCelebrateTaskId] = useState<string | null>(null);
+  // 全画面お祝いアニメーション関連のstate
+  const [showFullScreenCelebration, setShowFullScreenCelebration] = useState(false);
+  const [celebrationMessage, setCelebrationMessage] = useState('');
+  
+  // アニメーション用の値
+  const confettiAnim = useRef(new Animated.Value(0)).current;
+  const celebrationOpacity = useRef(new Animated.Value(0)).current;
+  const celebrationScale = useRef(new Animated.Value(0.5)).current;
+  const backgroundAnim = useRef(new Animated.Value(0)).current;
 
+  // 全画面お祝いアニメーションを実行する関数
+  const triggerFullScreenCelebration = useCallback((message: string) => {
+    setCelebrationMessage(message);
+    setShowFullScreenCelebration(true);
+
+    // 背景の色変更アニメーション
+    Animated.timing(backgroundAnim, {
+      toValue: 1,
+      duration: 300,
+      useNativeDriver: false, // backgroundColor は useNativeDriver に対応していない
+    }).start();
+
+    // 紙吹雪アニメーション
+    Animated.timing(confettiAnim, {
+      toValue: 1,
+      duration: 1000,
+      useNativeDriver: true,
+    }).start();
+
+    // メッセージのアニメーション
+    Animated.parallel([
+      Animated.timing(celebrationOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.spring(celebrationScale, {
+        toValue: 1,
+        tension: 200,
+        friction: 8,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
+    // 3秒後にアニメーションを終了
+    setTimeout(() => {
+      Animated.parallel([
+        Animated.timing(celebrationOpacity, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backgroundAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: false,
+        }),
+        Animated.timing(confettiAnim, {
+          toValue: 0,
+          duration: 500,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setShowFullScreenCelebration(false);
+        celebrationOpacity.setValue(0);
+        celebrationScale.setValue(0.5);
+        backgroundAnim.setValue(0);
+        confettiAnim.setValue(0);
+      });
+    }, 3000);
+  }, [backgroundAnim, confettiAnim, celebrationOpacity, celebrationScale]);
 
   const fetchTodayData = useCallback(async () => {
     try {
@@ -262,14 +332,6 @@ export default function HomeScreen() {
       task.id === taskId ? { ...task, is_completed: newCompletedStatus } : task
     ));
 
-    // 完了時にアニメーション用IDをセット
-    if (newCompletedStatus) {
-      setCelebrateTaskId(taskId);
-      // アニメーションのロジックはTaskItem側かHomeScreen側で管理
-      // HomeScreen側で管理する場合は、ここでアニメーションを開始する
-      // 例:
-      // Animated.sequence([...]).start(() => setCelebrateTaskId(null));
-    }
 
 
     try {
@@ -428,16 +490,24 @@ export default function HomeScreen() {
               title={task.content}
               isCompleted={task.is_completed}
               onToggle={() => handleTaskToggle(task.id)}
+              onCelebration={triggerFullScreenCelebration}
             />
           ))}
         </View>
 
-        {teacherComment && (
-          <TeacherCommentComponent
-            content={teacherComment.comment_content}
-            createdAt={teacherComment.created_at}
-          />
-        )}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>講師からのコメント</Text>
+          {teacherComment ? (
+            <TeacherCommentComponent
+              content={teacherComment.comment_content}
+              createdAt={teacherComment.created_at}
+            />
+          ) : (
+            <Text style={styles.noCommentText}>
+              まだコメントはありません
+            </Text>
+          )}
+        </View>
 
         {/* クイックアクション */}
         <View style={styles.section}>
@@ -495,11 +565,66 @@ export default function HomeScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-      {/* タスク完了時のアニメーションOverlayは、TaskItem内で個別に表示するか、
-          あるいは celebrateTaskId を使ってHomeScreen全体に表示するかを選択できます。
-          現状の HomeScreen のコードでは celebrateTaskId は使われていないようです。
-          TaskItem.tsx 側でアニメーションを完結させるのがシンプルかもしれません。
-      */}
+
+      {/* 全画面お祝いアニメーション */}
+      {showFullScreenCelebration && (
+        <Animated.View
+          style={[
+            styles.fullScreenCelebration,
+            {
+              backgroundColor: backgroundAnim.interpolate({
+                inputRange: [0, 1],
+                outputRange: ['rgba(0, 0, 0, 0)', 'rgba(59, 130, 246, 0.1)'],
+              }),
+            },
+          ]}
+          pointerEvents="none"
+        >
+          {/* 紙吹雪エフェクト */}
+          {Array.from({ length: 20 }, (_, i) => (
+            <Animated.View
+              key={i}
+              style={[
+                styles.confetti,
+                {
+                  left: `${(i * 5) % 100}%`,
+                  transform: [
+                    {
+                      translateY: confettiAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [-100, Dimensions.get('window').height + 100],
+                      }),
+                    },
+                    {
+                      rotate: confettiAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      }),
+                    },
+                  ],
+                },
+              ]}
+            />
+          ))}
+
+          {/* メインのお祝いメッセージ */}
+          <View style={styles.celebrationCenter}>
+            <Animated.View
+              style={[
+                styles.celebrationMessageContainer,
+                {
+                  opacity: celebrationOpacity,
+                  transform: [{ scale: celebrationScale }],
+                },
+              ]}
+            >
+              <Text style={styles.celebrationMessageEmoji}>🎉</Text>
+              <Text style={styles.celebrationMessageText}>{celebrationMessage}</Text>
+              <Text style={styles.celebrationSubText}>タスク完了！</Text>
+            </Animated.View>
+          </View>
+        </Animated.View>
+      )}
     </SafeAreaView>
   );
 }
@@ -692,5 +817,65 @@ const styles = StyleSheet.create({
     fontSize: 20,
     color: '#94A3B8',
     fontWeight: '300',
+  },
+  // 全画面お祝いアニメーション用スタイル
+  fullScreenCelebration: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    zIndex: 1000,
+  },
+  confetti: {
+    position: 'absolute',
+    width: 10,
+    height: 10,
+    backgroundColor: '#F59E0B',
+    borderRadius: 5,
+  },
+  celebrationCenter: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  celebrationMessageContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 32,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 8,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 16,
+    borderWidth: 3,
+    borderColor: '#F59E0B',
+  },
+  celebrationMessageEmoji: {
+    fontSize: 48,
+    marginBottom: 16,
+  },
+  celebrationMessageText: {
+    fontSize: 28,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  celebrationSubText: {
+    fontSize: 16,
+    color: '#6B7280',
+    textAlign: 'center',
+  },
+  noCommentText: {
+    color: '#94A3B8',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingVertical: 24,
+    fontStyle: 'italic',
   },
 });
