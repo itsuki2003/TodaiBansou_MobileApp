@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabaseClient';
 import { LessonSlotWithDetails, Student, Teacher } from '@/types/schedule';
 
@@ -11,7 +11,7 @@ export function useScheduleData(studentId?: string, currentDate?: Date) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   // 生徒一覧の取得
   const fetchStudents = useCallback(async () => {
@@ -35,6 +35,7 @@ export function useScheduleData(studentId?: string, currentDate?: Date) {
       const { data, error } = await supabase
         .from('teachers')
         .select('id, full_name, email, account_status')
+        .eq('account_status', '有効')
         .order('full_name');
 
       if (error) throw error;
@@ -98,18 +99,23 @@ export function useScheduleData(studentId?: string, currentDate?: Date) {
     setError(null);
 
     try {
+      // 基本データ（生徒・講師）を先に取得
       await Promise.all([
         fetchStudents(),
-        fetchTeachers(),
-        fetchLessonSlots()
+        fetchTeachers()
       ]);
+      
+      // 授業スケジュールは条件が揃ってから取得
+      if (studentId && currentDate) {
+        await fetchLessonSlots();
+      }
     } catch (err) {
       console.error('データの取得に失敗:', err);
       setError('データの取得に失敗しました');
     } finally {
       setLoading(false);
     }
-  }, [fetchStudents, fetchTeachers, fetchLessonSlots]);
+  }, [fetchStudents, fetchTeachers, fetchLessonSlots, studentId, currentDate]);
 
   // 初回読み込み
   useEffect(() => {
@@ -121,7 +127,7 @@ export function useScheduleData(studentId?: string, currentDate?: Date) {
     if (students.length > 0 && teachers.length > 0) {
       fetchLessonSlots();
     }
-  }, [studentId, currentDate, fetchLessonSlots, students.length, teachers.length]);
+  }, [studentId, currentDate]);
 
   // リアルタイム更新の設定
   useEffect(() => {
