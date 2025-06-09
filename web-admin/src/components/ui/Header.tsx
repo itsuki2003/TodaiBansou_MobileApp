@@ -1,16 +1,44 @@
 'use client';
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/contexts/AuthContext";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { LogoutConfirmDialog } from "@/components/ui/common/LogoutConfirmDialog";
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faHome, faUsers, faUserTie, faCalendarDays, faClipboardList, 
+  faBullhorn, faChartLine, faPlus, faLink, faFileText,
+  faChevronDown, faSignOutAlt, faBars
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function Header() {
   const router = useRouter();
   const { user, loading, signOut, signOutLoading, signOutError, clearSignOutError } = useAuth();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [openDropdown, setOpenDropdown] = useState<string | null>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // ドロップダウンの外側クリックで閉じる
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
+  // ドロップダウンの開閉
+  const handleDropdownToggle = (dropdown: string) => {
+    setOpenDropdown(openDropdown === dropdown ? null : dropdown);
+  };
 
   // ログアウトボタンクリック時（確認ダイアログを表示）
   const handleSignOutClick = () => {
@@ -59,216 +87,214 @@ export default function Header() {
     return null; // ログインしていない場合はヘッダーを表示しない
   }
 
+  const navigationItems = [
+    {
+      label: 'ホーム',
+      href: '/',
+      icon: faHome,
+      simple: true
+    },
+    {
+      label: '生徒管理',
+      icon: faUsers,
+      dropdown: 'students',
+      items: [
+        { label: '生徒一覧', href: '/students', icon: faClipboardList },
+        { label: '新規生徒登録', href: '/students/new', icon: faPlus },
+        { label: 'やることリスト', href: '/todo-lists', icon: faClipboardList }
+      ]
+    },
+    ...(user.role === 'admin' ? [{
+      label: '講師管理',
+      icon: faUserTie,
+      dropdown: 'teachers',
+      items: [
+        { label: '講師一覧', href: '/teachers', icon: faClipboardList },
+        { label: '講師申請管理', href: '/teacher-applications', icon: faFileText },
+        { label: '担当割り当て', href: '/assignments', icon: faLink }
+      ]
+    }] : []),
+    {
+      label: 'スケジュール',
+      href: '/schedule',
+      icon: faCalendarDays,
+      simple: true
+    },
+    {
+      label: '申請管理',
+      href: '/requests',
+      icon: faClipboardList,
+      simple: true
+    },
+    ...(user.role === 'admin' ? [{
+      label: 'お知らせ',
+      href: '/notifications',
+      icon: faBullhorn,
+      simple: true
+    }] : []),
+    ...(user.role === 'teacher' ? [{
+      label: 'ダッシュボード',
+      href: '/teacher-dashboard',
+      icon: faChartLine,
+      simple: true
+    }] : [])
+  ];
+
   return (
-    <header className="bg-white shadow-md border-b border-primary-100">
+    <header className="bg-white shadow-lg border-b border-primary-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           {/* ロゴ・タイトル */}
-          <Link href="/students" className="flex items-center space-x-3 group">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center shadow-md group-hover:shadow-lg transition-all duration-200">
-              <span className="text-white font-bold text-lg">東</span>
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-primary-700 group-hover:text-primary-600 transition-colors">
-                東大伴走
-              </h1>
-              <span className="text-xs text-gray-500 font-medium">管理画面</span>
-            </div>
+          <Link href="/" className="flex items-center space-x-3 group">
+            <Image
+              src="/logo.png"
+              alt="東大伴走ロゴ"
+              height={40}
+              width={160}
+              className="object-contain h-10 w-auto"
+              priority
+            />
+            <span className="text-sm text-gray-400 font-medium border-l border-gray-200 pl-3">
+              管理画面
+            </span>
           </Link>
 
-          {/* ナビゲーション */}
-          <nav className="hidden md:flex space-x-6">
-            <Link 
-              href="/students" 
-              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              生徒一覧
-            </Link>
-            <Link 
-              href="/students/new" 
-              className="text-primary-600 hover:text-primary-700 bg-primary-50 hover:bg-primary-100 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              新規生徒登録
-            </Link>
-            <Link 
-              href="/assignments" 
-              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              担当割り当て
-            </Link>
-            <Link 
-              href="/schedule" 
-              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              スケジュール
-            </Link>
-            {user.role === 'teacher' && (
-              <Link 
-                href="/teacher-dashboard" 
-                className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-              >
-                ダッシュボード
-              </Link>
-            )}
-            <Link 
-              href="/requests" 
-              className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              申請管理
-            </Link>
-            {user.role === 'admin' && (
-              <>
-                <Link 
-                  href="/teachers" 
-                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  講師管理
-                </Link>
-                <Link 
-                  href="/teacher-applications" 
-                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  講師申請
-                </Link>
-                <Link 
-                  href="/notifications" 
-                  className="text-gray-600 hover:text-primary-600 px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  お知らせ
-                </Link>
-              </>
-            )}
+          {/* デスクトップナビゲーション */}
+          <nav className="hidden lg:flex items-center space-x-2" ref={dropdownRef}>
+            {navigationItems.map((item, index) => (
+              <div key={index} className="relative">
+                {item.simple ? (
+                  <Link
+                    href={item.href!}
+                    className="px-3 py-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200 font-medium text-sm"
+                  >
+                    {item.label}
+                  </Link>
+                ) : (
+                  <>
+                    <button
+                      onClick={() => handleDropdownToggle(item.dropdown!)}
+                      className="flex items-center space-x-2 px-3 py-2 rounded-lg text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200 font-medium text-sm"
+                    >
+                      <span>{item.label}</span>
+                      <FontAwesomeIcon 
+                        icon={faChevronDown} 
+                        className={`w-3 h-3 transition-transform duration-200 ${
+                          openDropdown === item.dropdown ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    
+                    {openDropdown === item.dropdown && (
+                      <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-slide-in-up">
+                        {item.items?.map((subItem, subIndex) => (
+                          <Link
+                            key={subIndex}
+                            href={subItem.href}
+                            onClick={() => setOpenDropdown(null)}
+                            className="block px-4 py-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 transition-all duration-200 text-sm"
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            ))}
           </nav>
 
           {/* ユーザーメニュー */}
-          <div className="relative">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-md px-3 py-2 transition-colors"
-            >
-              <div className="text-right hidden sm:block">
-                <div className="text-sm font-medium">{user.profile?.full_name || user.email}</div>
-                <div className="text-xs text-gray-500">
-                  {user.role === 'admin' ? '運営者' : '講師'}
-                </div>
-              </div>
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center shadow-sm">
-                <span className="text-white text-sm font-semibold">
-                  {user.profile?.full_name ? user.profile.full_name.charAt(0) : user.email.charAt(0).toUpperCase()}
-                </span>
-              </div>
-              <svg
-                className={`w-4 h-4 transition-transform ${isMenuOpen ? 'rotate-180' : ''}`}
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
+          <div className="flex items-center space-x-4">
+            <div className="relative">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="flex items-center space-x-2 text-gray-700 hover:text-primary-600 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg px-2 py-2 transition-all duration-200 hover:bg-primary-50"
               >
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* ドロップダウンメニュー */}
-            {isMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-50 border border-gray-200">
-                <div className="px-4 py-2 text-sm text-gray-700 border-b border-gray-100">
-                  <div className="font-medium">{user.profile?.full_name || user.email}</div>
-                  <div className="text-xs text-gray-500">{user.email}</div>
+                <div className="text-right">
+                  <div className="text-sm font-medium">{user.profile?.full_name || user.email}</div>
+                  <div className="text-xs text-gray-500">
+                    {user.role === 'admin' ? '運営者' : '講師'}
+                  </div>
                 </div>
-                <button
-                  onClick={handleSignOutClick}
-                  className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  ログアウト
-                </button>
-              </div>
-            )}
-          </div>
+                <FontAwesomeIcon 
+                  icon={faChevronDown} 
+                  className={`w-3 h-3 transition-transform duration-200 ${isMenuOpen ? 'rotate-180' : ''}`}
+                />
+              </button>
 
-          {/* モバイルメニューボタン */}
-          <div className="md:hidden">
-            <button
-              onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 rounded-md p-2"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+              {/* ユーザードロップダウンメニュー */}
+              {isMenuOpen && (
+                <div className="absolute right-0 mt-2 w-64 bg-white rounded-xl shadow-xl border border-gray-100 py-2 z-50 animate-slide-in-up">
+                  <div className="px-4 py-3 border-b border-gray-100">
+                    <div className="font-semibold text-gray-900">{user.profile?.full_name || user.email}</div>
+                    <div className="text-sm text-gray-500">{user.email}</div>
+                    <div className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary-100 text-primary-700 mt-1">
+                      {user.role === 'admin' ? '運営者' : '講師'}
+                    </div>
+                  </div>
+                  <div className="py-1">
+                    <button
+                      onClick={handleSignOutClick}
+                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 hover:bg-error-50 hover:text-error-700 transition-colors"
+                    >
+                      <FontAwesomeIcon icon={faSignOutAlt} className="w-4 h-4 mr-3" />
+                      ログアウト
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* モバイルメニューボタン */}
+            <div className="lg:hidden">
+              <button
+                onClick={() => setIsMenuOpen(!isMenuOpen)}
+                className="p-2 text-gray-600 hover:text-primary-600 hover:bg-primary-50 focus:outline-none focus:ring-2 focus:ring-primary-500 rounded-lg transition-all duration-200"
+              >
+                <FontAwesomeIcon icon={faBars} className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
 
         {/* モバイルナビゲーション */}
         {isMenuOpen && (
-          <div className="md:hidden border-t border-gray-200 py-2">
-            <Link 
-              href="/students" 
-              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              生徒一覧
-            </Link>
-            <Link 
-              href="/students/new" 
-              className="block px-3 py-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              新規生徒登録
-            </Link>
-            <Link 
-              href="/assignments" 
-              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              担当割り当て
-            </Link>
-            <Link 
-              href="/schedule" 
-              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              スケジュール
-            </Link>
-            {user.role === 'teacher' && (
-              <Link 
-                href="/teacher-dashboard" 
-                className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-                onClick={() => setIsMenuOpen(false)}
-              >
-                ダッシュボード
-              </Link>
-            )}
-            <Link 
-              href="/requests" 
-              className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              申請管理
-            </Link>
-            {user.role === 'admin' && (
-              <>
-                <Link 
-                  href="/teachers" 
-                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  講師管理
-                </Link>
-                <Link 
-                  href="/teacher-applications" 
-                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  講師申請
-                </Link>
-                <Link 
-                  href="/notifications" 
-                  className="block px-3 py-2 text-gray-600 hover:text-gray-900 text-sm font-medium"
-                  onClick={() => setIsMenuOpen(false)}
-                >
-                  お知らせ
-                </Link>
-              </>
-            )}
+          <div className="lg:hidden border-t border-primary-100 py-4 bg-gray-50 rounded-b-xl">
+            <div className="space-y-2 px-4">
+              {navigationItems.map((item, index) => (
+                <div key={index}>
+                  {item.simple ? (
+                    <Link
+                      href={item.href!}
+                      onClick={() => setIsMenuOpen(false)}
+                      className="block px-4 py-3 text-gray-600 hover:text-primary-600 hover:bg-white rounded-lg transition-all duration-200 font-medium"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    <div className="space-y-1">
+                      <div className="px-4 py-2 text-gray-800 font-semibold text-sm">
+                        {item.label}
+                      </div>
+                      <div className="ml-6 space-y-1">
+                        {item.items?.map((subItem, subIndex) => (
+                          <Link
+                            key={subIndex}
+                            href={subItem.href}
+                            onClick={() => setIsMenuOpen(false)}
+                            className="block px-6 py-2 text-gray-600 hover:text-primary-600 hover:bg-white rounded-lg transition-all duration-200 text-sm"
+                          >
+                            {subItem.label}
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </div>

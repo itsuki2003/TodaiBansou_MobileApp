@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
+import Breadcrumb from '@/components/ui/Breadcrumb';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingState from '@/components/ui/common/LoadingState';
@@ -156,6 +157,14 @@ export default function TodoListsPage() {
       <Header />
       
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* パンくずリスト */}
+        <Breadcrumb 
+          items={[
+            { label: '生徒管理', href: '/students' },
+            { label: 'やることリスト管理' }
+          ]}
+        />
+        
         {/* ページヘッダー */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">

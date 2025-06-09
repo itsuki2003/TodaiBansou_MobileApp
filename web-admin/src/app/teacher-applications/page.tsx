@@ -4,12 +4,19 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
+import Breadcrumb from '@/components/ui/Breadcrumb';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingState from '@/components/ui/common/LoadingState';
 import ErrorState from '@/components/ui/common/ErrorState';
 import EmptyState from '@/components/ui/common/EmptyState';
 import { TeacherApplicationListItem, TeacherApplicationFilters } from '@/types/teacherApplication';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faEnvelope, faPhone, faGraduationCap, faCalendarDays, 
+  faUserGraduate, faCheck, faTimes, faEye, faUserTie,
+  faSearch, faFilter, faInfoCircle
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function TeacherApplicationsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -123,10 +130,18 @@ export default function TeacherApplicationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <Header />
       
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        {/* パンくずリスト */}
+        <Breadcrumb 
+          items={[
+            { label: '管理者機能', href: '/' },
+            { label: '講師登録申請一覧' }
+          ]}
+        />
+        
         {/* ページヘッダー */}
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -138,18 +153,19 @@ export default function TeacherApplicationsPage() {
         </div>
 
         {/* フィルタ・検索 */}
-        <Card className="mb-6">
+        <Card className="mb-6 border-0 shadow-lg bg-white/80 backdrop-blur-sm">
           <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex flex-col lg:flex-row gap-6">
               {/* ステータスフィルタ */}
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  ステータス
+                <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faFilter} className="w-4 h-4" />
+                  <span>ステータス</span>
                 </label>
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value as any)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
                 >
                   <option value="all">すべて</option>
                   <option value="承認待ち">承認待ち</option>
@@ -160,23 +176,39 @@ export default function TeacherApplicationsPage() {
 
               {/* 検索 */}
               <div className="flex-2">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  検索
+                <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faSearch} className="w-4 h-4" />
+                  <span>検索</span>
                 </label>
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="氏名、メールアドレス、大学名で検索..."
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+                <div className="relative">
+                  <FontAwesomeIcon icon={faSearch} className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="氏名、メールアドレス、大学名で検索..."
+                    className="w-full pl-12 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200"
+                  />
+                </div>
               </div>
 
               {/* 統計 */}
-              <div className="flex-1 text-sm text-gray-600 flex items-end">
-                <div>
-                  <p>全{applications.length}件</p>
-                  <p>承認待ち{applications.filter(a => a.account_status === '承認待ち').length}件</p>
+              <div className="flex-1">
+                <label className="flex items-center space-x-2 text-sm font-medium text-gray-700 mb-2">
+                  <FontAwesomeIcon icon={faInfoCircle} className="w-4 h-4" />
+                  <span>統計</span>
+                </label>
+                <div className="bg-gradient-to-r from-primary-50 to-accent-50 rounded-xl p-4">
+                  <div className="flex flex-col space-y-1 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">全件数:</span>
+                      <span className="font-semibold text-primary-600">{applications.length}件</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-600">承認待ち:</span>
+                      <span className="font-semibold text-warning-600">{applications.filter(a => a.account_status === '承認待ち').length}件</span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -185,14 +217,15 @@ export default function TeacherApplicationsPage() {
 
         {/* エラー表示 */}
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-md p-4">
-            <div className="flex">
-              <div className="text-red-600 text-sm">{error}</div>
+          <div className="mb-6 bg-gradient-to-r from-red-50 to-red-100 border border-red-200 rounded-xl p-4 shadow-sm">
+            <div className="flex items-center">
+              <FontAwesomeIcon icon={faTimes} className="w-5 h-5 text-red-500 mr-3 flex-shrink-0" />
+              <div className="text-red-700 text-sm flex-1">{error}</div>
               <button
                 onClick={() => setError(null)}
-                className="ml-auto text-red-600 hover:text-red-800"
+                className="ml-3 text-red-500 hover:text-red-700 transition-colors duration-200"
               >
-                ×
+                <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -214,51 +247,74 @@ export default function TeacherApplicationsPage() {
             />
           )
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-6">
             {filteredApplications.map((application) => (
-              <Card key={application.id} variant="interactive">
-                <CardContent className="p-6">
-                  <div className="flex items-start justify-between">
+              <Card key={application.id} className="border-0 shadow-xl bg-white/90 backdrop-blur-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1">
+                <CardContent className="p-8">
+                  <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
                     <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-lg font-semibold text-gray-900">
-                          {application.full_name}
-                        </h3>
-                        <span className="text-sm text-gray-500">
-                          ({application.furigana_name})
-                        </span>
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-gray-900 mb-1">
+                            {application.full_name}
+                          </h3>
+                          <span className="text-sm text-gray-500">
+                            {application.furigana_name}
+                          </span>
+                        </div>
                         <span
-                          className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                             application.account_status === '承認待ち'
-                              ? 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-gradient-to-r from-warning-100 to-warning-200 text-warning-800 border border-warning-300'
                               : application.account_status === '有効'
-                              ? 'bg-green-100 text-green-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-gradient-to-r from-success-100 to-success-200 text-success-800 border border-success-300'
+                              : 'bg-gradient-to-r from-error-100 to-error-200 text-error-800 border border-error-300'
                           }`}
                         >
+                          {application.account_status === '承認待ち' && <FontAwesomeIcon icon={faInfoCircle} className="w-4 h-4 mr-2" />}
+                          {application.account_status === '有効' && <FontAwesomeIcon icon={faCheck} className="w-4 h-4 mr-2" />}
+                          {application.account_status === '無効' && <FontAwesomeIcon icon={faTimes} className="w-4 h-4 mr-2" />}
                           {application.account_status}
                         </span>
                       </div>
 
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>📧 {application.email}</p>
-                        {application.phone_number && (
-                          <p>📱 {application.phone_number}</p>
-                        )}
-                        {application.education_background_university && (
-                          <p>🎓 {application.education_background_university}</p>
-                        )}
-                        <p>📅 申請日: {application.registration_application_date}</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-3">
+                          <div className="flex items-center space-x-3 text-sm text-gray-600">
+                            <FontAwesomeIcon icon={faEnvelope} className="w-4 h-4 text-primary-500" />
+                            <span className="font-medium">{application.email}</span>
+                          </div>
+                          {application.phone_number && (
+                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faPhone} className="w-4 h-4 text-primary-500" />
+                              <span>{application.phone_number}</span>
+                            </div>
+                          )}
+                        </div>
+                        <div className="space-y-3">
+                          {application.education_background_university && (
+                            <div className="flex items-center space-x-3 text-sm text-gray-600">
+                              <FontAwesomeIcon icon={faGraduationCap} className="w-4 h-4 text-primary-500" />
+                              <span>{application.education_background_university}</span>
+                            </div>
+                          )}
+                          <div className="flex items-center space-x-3 text-sm text-gray-600">
+                            <FontAwesomeIcon icon={faCalendarDays} className="w-4 h-4 text-primary-500" />
+                            <span>申請日: {application.registration_application_date}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <Button
                         variant="secondary"
                         size="sm"
                         onClick={() => setSelectedApplication(application)}
+                        className="flex items-center space-x-2"
                       >
-                        詳細確認
+                        <FontAwesomeIcon icon={faEye} className="w-4 h-4" />
+                        <span>詳細確認</span>
                       </Button>
                       
                       {application.account_status === '承認待ち' && (
@@ -268,16 +324,20 @@ export default function TeacherApplicationsPage() {
                             size="sm"
                             onClick={() => handleStatusUpdate(application.id, '有効')}
                             disabled={processingId === application.id}
+                            className="flex items-center space-x-2"
                           >
-                            {processingId === application.id ? '処理中...' : '承認'}
+                            <FontAwesomeIcon icon={faCheck} className="w-4 h-4" />
+                            <span>{processingId === application.id ? '処理中...' : '承認'}</span>
                           </Button>
                           <Button
                             variant="destructive"
                             size="sm"
                             onClick={() => handleStatusUpdate(application.id, '無効')}
                             disabled={processingId === application.id}
+                            className="flex items-center space-x-2"
                           >
-                            拒否
+                            <FontAwesomeIcon icon={faTimes} className="w-4 h-4" />
+                            <span>拒否</span>
                           </Button>
                         </>
                       )}

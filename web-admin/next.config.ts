@@ -2,10 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // パフォーマンス最適化設定
-  experimental: {
-    // React Server Components の最適化
-    serverComponentsExternalPackages: ['@supabase/supabase-js'],
-  },
+  serverExternalPackages: ['@supabase/supabase-js'],
 
   // 圧縮を有効化
   compress: true,
@@ -48,10 +45,7 @@ const nextConfig: NextConfig = {
     }
 
     // Tree shakingの最適化
-    config.resolve.alias = {
-      ...config.resolve.alias,
-      'date-fns': 'date-fns/esm',
-    };
+    // date-fnsのaliasは削除（importエラーの原因となるため）
 
     return config;
   },

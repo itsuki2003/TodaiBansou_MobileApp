@@ -51,11 +51,10 @@ export async function middleware(request: NextRequest) {
 
   // ルートパス（/）へのアクセスの場合
   if (request.nextUrl.pathname === '/') {
-    if (user) {
-      return NextResponse.redirect(new URL('/students', request.url));
-    } else {
+    if (!user) {
       return NextResponse.redirect(new URL('/login', request.url));
     }
+    // ログイン済みユーザーはホーム画面（ダッシュボード）を表示
   }
 
   // 保護されたページへのアクセスの場合

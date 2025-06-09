@@ -1,30 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  /* 東大伴走ブランドカラー */
+  /* 東大伴走ブランドカラー - 統一された色設定 */
   --color-primary: #1d549d;
-  --color-primary-light: #a5bfff;
-  --color-primary-dark: #112a4d;
+  --color-primary-50: #f0f4ff;
+  --color-primary-100: #e0eaff;
+  --color-primary-200: #c7d7ff;
+  --color-primary-300: #a5bfff;
+  --color-primary-400: #839eff;
+  --color-primary-500: #1d549d;
+  --color-primary-600: #1a4a89;
+  --color-primary-700: #173f75;
+  --color-primary-800: #143461;
+  --color-primary-900: #112a4d;
+  
   --color-accent: #e6f00f;
-  --color-accent-dark: #bac00c;
+  --color-accent-50: #fffef0;
+  --color-accent-100: #fffbe0;
+  --color-accent-200: #fff6c7;
+  --color-accent-300: #ffefa5;
+  --color-accent-400: #ffe683;
+  --color-accent-500: #e6f00f;
+  --color-accent-600: #d0d80e;
+  --color-accent-700: #bac00c;
+  --color-accent-800: #a4a80b;
+  --color-accent-900: #8e9009;
   
   /* システムカラー */
   --background: #ffffff;
-  --foreground: #171717;
-  --surface: #f8fafc;
+  --background-secondary: #f8fafc;
+  --background-tertiary: #f1f5f9;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-secondary: #f8fafc;
   --border: #e2e8f0;
   --border-light: #f1f5f9;
+  --border-focus: var(--color-primary-300);
   
   /* セマンティックカラー */
   --success: #22c55e;
+  --success-light: #dcfce7;
   --warning: #f59e0b;
+  --warning-light: #fef3c7;
   --error: #ef4444;
+  --error-light: #fee2e2;
   --info: var(--color-primary);
+  --info-light: var(--color-primary-50);
   
   /* タイポグラフィ */
   --text-primary: #0f172a;
   --text-secondary: #64748b;
   --text-muted: #94a3b8;
+  --text-inverse: #ffffff;
+  
+  /* シャドウとエフェクト */
+  --shadow-soft: 0 2px 4px 0 rgba(29, 84, 157, 0.05);
+  --shadow-medium: 0 4px 8px 0 rgba(29, 84, 157, 0.08);
+  --shadow-strong: 0 8px 16px 0 rgba(29, 84, 157, 0.12);
+  --shadow-accent: 0 4px 12px 0 rgba(230, 240, 15, 0.3);
+  
+  /* グラデーション */
+  --gradient-primary: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
+  --gradient-accent: linear-gradient(135deg, var(--color-accent-400) 0%, var(--color-accent-500) 100%);
+  --gradient-background: linear-gradient(135deg, #f8fafc 0%, #e0eaff 100%);
 }
 
 @theme inline {
