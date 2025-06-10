@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
-import { useParams, useSearchParams, useRouter } from 'next/navigation';
+import React, { useState, useEffect, useCallback, use } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/ui/Header';
@@ -33,13 +33,16 @@ interface Student {
   furigana_name?: string;
 }
 
-export default function TodoListPage() {
-  const params = useParams();
+interface TodoListPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function TodoListPage({ params }: TodoListPageProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { user } = useAuth();
 
-  const studentId = params.id as string;
+  const { id: studentId } = use(params);
   const weekParam = searchParams.get('week');
   const currentWeekStart = parseWeekFromQuery(weekParam) || getCurrentWeekStart();
 

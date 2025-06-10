@@ -1,42 +1,59 @@
 'use client';
 
-import { Calendar, DateLocalizer, View } from 'react-big-calendar';
+import { Calendar, DateLocalizer } from 'react-big-calendar';
+import { format } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { faUser, faClock, faMapMarkerAlt } from '@fortawesome/free-solid-svg-icons';
 import { CalendarEvent, Student } from '@/types/schedule';
+import { getEventClassName, getLessonTypeColor, getStatusColor } from '../constants/colors';
 
 interface CalendarViewProps {
   localizer: DateLocalizer;
   events: CalendarEvent[];
   currentDate: Date;
+  currentView: 'month' | 'week' | 'day';
   onNavigate: (date: Date) => void;
+  onView: (view: 'month' | 'week' | 'day') => void;
   onEventClick: (event: CalendarEvent) => void;
   onSlotClick: (slotInfo: { start: Date; end: Date }) => void;
   selectedStudent: Student | null;
+  loading?: boolean;
 }
 
 export default function CalendarView({
   localizer,
   events,
   currentDate,
+  currentView,
   onNavigate,
+  onView,
   onEventClick,
   onSlotClick,
-  selectedStudent
+  selectedStudent,
+  loading = false
 }: CalendarViewProps) {
   
   // カスタムイベントコンポーネント
   const EventComponent = ({ event }: { event: CalendarEvent }) => {
     const slot = event.resource;
+    const typeColor = getLessonTypeColor(slot.slot_type);
+    const statusColor = getStatusColor(slot.status);
     
     return (
-      <div className="p-1 text-xs leading-tight">
-        <div className="font-medium truncate">
-          {slot.slot_type}
-        </div>
-        <div className="truncate opacity-90">
-          {slot.teacher_name || '講師未定'}
+      <div className="p-2 text-xs leading-tight h-full flex flex-col justify-between">
+        <div className="flex-1">
+          <div className="font-semibold truncate mb-1 flex items-center">
+            <FontAwesomeIcon icon={faUser} className="w-3 h-3 mr-1 opacity-75" />
+            {slot.slot_type}
+          </div>
+          <div className="truncate opacity-90 flex items-center">
+            <FontAwesomeIcon icon={faClock} className="w-3 h-3 mr-1 opacity-60" />
+            {slot.teacher_name || '講師未定'}
+          </div>
         </div>
         {slot.status !== '予定通り' && (
-          <div className="text-yellow-100 font-medium">
+          <div className={`text-xs font-medium mt-1 px-1 py-0.5 rounded ${statusColor.bg} ${statusColor.text}`}>
             {slot.status}
           </div>
         )}
@@ -44,174 +61,59 @@ export default function CalendarView({
     );
   };
 
-  // ツールバーのカスタマイズ
-  const CustomToolbar = ({ label, onNavigate, onView }: any) => {
-    return (
-      <div className="flex justify-between items-center mb-4 p-4 bg-gray-50 rounded-t-lg">
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onNavigate('PREV')}
-            className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          >
-            ‹ 前月
-          </button>
-          <button
-            onClick={() => onNavigate('TODAY')}
-            className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          >
-            今月
-          </button>
-          <button
-            onClick={() => onNavigate('NEXT')}
-            className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          >
-            次月 ›
-          </button>
-        </div>
-        
-        <h2 className="text-xl font-semibold text-gray-900">
-          {label}
-        </h2>
-        
-        <div className="flex items-center space-x-2">
-          <button
-            onClick={() => onView('month')}
-            className="px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
-          >
-            月表示
-          </button>
-          <button
-            onClick={() => onView('week')}
-            className="px-3 py-1 bg-white border border-gray-300 rounded hover:bg-gray-50"
-          >
-            週表示
-          </button>
-        </div>
-      </div>
-    );
-  };
+  // ツールバーを非表示にする（外部で管理）
+  const CustomToolbar = () => null;
 
   if (!selectedStudent) {
     return (
-      <div className="h-96 flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center text-gray-500">
-          <svg
-            className="mx-auto h-12 w-12 text-gray-400 mb-4"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M8 7V3a2 2 0 012-2h4a2 2 0 012 2v4m-6 0V3a2 2 0 012-2h4a2 2 0 012 2v4M9 11v4a2 2 0 002 2h2a2 2 0 002-2v-4M7 21h10"
-            />
-          </svg>
-          <h3 className="text-sm font-medium text-gray-900 mb-1">
-            生徒が選択されていません
-          </h3>
-          <p className="text-sm text-gray-500">
-            上記のドロップダウンから生徒を選択してください
-          </p>
+      <div className="bg-white rounded-xl shadow-lg">
+        <div className="h-96 flex items-center justify-center bg-gray-50 rounded-xl">
+          <div className="text-center text-gray-500">
+            <div className="w-16 h-16 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-4">
+              <FontAwesomeIcon icon={faUser} className="w-8 h-8 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              生徒が選択されていません
+            </h3>
+            <p className="text-sm text-gray-500 max-w-md">
+              上記のドロップダウンから生徒を選択してください。<br />
+              選択後、カレンダーに授業スケジュールが表示されます。
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // スロットクリックハンドラー
+  const handleSlotClick = (slotInfo: { start: Date; end: Date }) => {
+    if (!selectedStudent) {
+      alert('まず生徒を選択してください');
+      return;
+    }
+    onSlotClick(slotInfo);
+  };
+
+  // イベントクリックハンドラー
+  const handleEventClick = (event: CalendarEvent) => {
+    onEventClick(event);
+  };
+
+  if (loading) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg">
+        <div className="h-96 flex items-center justify-center">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-2 border-primary-600 border-t-transparent mx-auto mb-4" />
+            <p className="text-sm text-gray-600">スケジュールを読み込み中...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="h-screen bg-white">
-      <style jsx global>{`
-        .rbc-calendar {
-          min-height: 600px;
-        }
-        
-        .rbc-header {
-          padding: 12px 8px;
-          font-weight: 600;
-          background-color: #f8fafc;
-          border-bottom: 2px solid #e2e8f0;
-        }
-        
-        .rbc-month-view {
-          padding: 0;
-        }
-        
-        .rbc-date-cell {
-          padding: 8px;
-          text-align: right;
-        }
-        
-        .rbc-today {
-          background-color: #fffbeb;
-        }
-        
-        /* 授業種別による色分け */
-        .lesson-event.lesson-regular {
-          background-color: #3b82f6;
-          border-color: #2563eb;
-        }
-        
-        .lesson-event.lesson-consultation {
-          background-color: #8b5cf6;
-          border-color: #7c3aed;
-        }
-        
-        .lesson-event.lesson-makeup {
-          background-color: #f59e0b;
-          border-color: #d97706;
-        }
-        
-        .lesson-event.lesson-additional {
-          background-color: #10b981;
-          border-color: #059669;
-        }
-        
-        .lesson-event.lesson-absent {
-          background-color: #6b7280;
-          border-color: #4b5563;
-          opacity: 0.7;
-        }
-        
-        .lesson-event.lesson-rescheduled {
-          background-color: #ef4444;
-          border-color: #dc2626;
-          opacity: 0.8;
-        }
-        
-        .rbc-event {
-          border: none;
-          border-radius: 4px;
-          color: white;
-          font-size: 12px;
-          padding: 2px 4px;
-          cursor: pointer;
-        }
-        
-        .rbc-event:hover {
-          opacity: 0.8;
-        }
-        
-        .rbc-selected {
-          background-color: #1f2937 !important;
-        }
-        
-        .rbc-slot-selection {
-          background-color: rgba(59, 130, 246, 0.2);
-        }
-        
-        .rbc-time-view .rbc-header {
-          border-bottom: 1px solid #e5e7eb;
-        }
-        
-        .rbc-time-slot {
-          border-top: 1px solid #f3f4f6;
-        }
-        
-        .rbc-current-time-indicator {
-          background-color: #ef4444;
-        }
-      `}</style>
+    <div className="bg-white rounded-xl shadow-lg overflow-hidden">
       
       <Calendar
         localizer={localizer}
@@ -219,18 +121,44 @@ export default function CalendarView({
         startAccessor="start"
         endAccessor="end"
         date={currentDate}
+        view={currentView}
         onNavigate={onNavigate}
-        onSelectEvent={onEventClick}
-        onSelectSlot={onSlotClick}
-        selectable
+        onView={onView}
+        onSelectEvent={handleEventClick}
+        onSelectSlot={handleSlotClick}
+        selectable={true}
         popup
         views={['month', 'week', 'day']}
         defaultView="month"
         step={30}
         showMultiDayTimes
+        min={new Date(2024, 0, 1, 8, 0)} // 8:00から
+        max={new Date(2024, 0, 1, 22, 0)} // 22:00まで
         components={{
           event: EventComponent,
-          toolbar: CustomToolbar,
+          toolbar: CustomToolbar
+        }}
+        eventPropGetter={(event) => {
+          const slot = event.resource;
+          const className = getEventClassName(slot.slot_type, slot.status);
+          return {
+            className,
+            style: {
+              border: 'none',
+              borderRadius: '6px',
+              color: 'white',
+              fontSize: '12px',
+              padding: '4px 8px'
+            }
+          };
+        }}
+        dayPropGetter={(date) => {
+          const today = new Date();
+          const isToday = date.toDateString() === today.toDateString();
+          return {
+            className: isToday ? 'rbc-today' : '',
+            style: isToday ? { backgroundColor: '#fef3c7' } : {}
+          };
         }}
         messages={{
           allDay: '終日',
@@ -249,15 +177,23 @@ export default function CalendarView({
         }}
         formats={{
           monthHeaderFormat: (date: Date) =>
-            localizer.format(date, 'yyyy年M月', 'ja'),
+            format(date, 'yyyy年M月', { locale: ja }),
           dayHeaderFormat: (date: Date) =>
-            localizer.format(date, 'M月d日(E)', 'ja'),
+            format(date, 'M月d日(E)', { locale: ja }),
           dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
-            `${localizer.format(start, 'M月d日', 'ja')} - ${localizer.format(end, 'M月d日', 'ja')}`,
+            `${format(start, 'M月d日', { locale: ja })} - ${format(end, 'M月d日', { locale: ja })}`,
           timeGutterFormat: (date: Date) =>
-            localizer.format(date, 'HH:mm', 'ja'),
+            format(date, 'HH:mm', { locale: ja }),
           eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
-            `${localizer.format(start, 'HH:mm', 'ja')} - ${localizer.format(end, 'HH:mm', 'ja')}`,
+            `${format(start, 'HH:mm', { locale: ja })} - ${format(end, 'HH:mm', { locale: ja })}`,
+          agendaHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+            `${format(start, 'M月d日', { locale: ja })} - ${format(end, 'M月d日', { locale: ja })}`,
+          agendaDateFormat: (date: Date) =>
+            format(date, 'M月d日(E)', { locale: ja }),
+          agendaTimeFormat: (date: Date) =>
+            format(date, 'HH:mm', { locale: ja }),
+          agendaTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
+            `${format(start, 'HH:mm', { locale: ja })} - ${format(end, 'HH:mm', { locale: ja })}`
         }}
       />
     </div>

@@ -10,11 +10,14 @@ import Breadcrumb, { breadcrumbPaths } from '@/components/ui/Breadcrumb';
 import StudentCard, { StudentRowTablet } from '@/components/students/StudentCard';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import PageHeader from '@/components/ui/PageHeader';
 import { useDebounce } from '@/hooks/useDebounce';
 import { PageLoader } from '@/components/ui/common/AppLoader';
 import { ErrorDisplay } from '@/components/ui/common/ErrorDisplay';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function StudentsPage() {
+  const { user } = useAuth();
   const [students, setStudents] = useState<StudentWithAssignments[]>([]);
   const [filteredStudents, setFilteredStudents] = useState<StudentWithAssignments[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,8 +35,10 @@ export default function StudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<StudentWithAssignments | null>(null);
 
   useEffect(() => {
-    fetchStudents();
-  }, []);
+    if (user) {
+      fetchStudents();
+    }
+  }, [user]);
 
   useEffect(() => {
     filterStudents();
@@ -44,7 +49,7 @@ export default function StudentsPage() {
       setLoading(true);
       setError(null);
 
-      const { data: studentsData, error: studentsError } = await supabase
+      let query = supabase
         .from('students')
         .select(`
           *,
@@ -62,6 +67,13 @@ export default function StudentsPage() {
           )
         `)
         .eq('assignments.status', '有効');
+
+      // 講師の場合は担当生徒のみを取得
+      if (user?.role === 'teacher' && user.profile?.id) {
+        query = query.eq('assignments.teacher_id', user.profile.id);
+      }
+
+      const { data: studentsData, error: studentsError } = await query;
 
       if (studentsError) {
         throw new Error(studentsError.message);
@@ -227,22 +239,20 @@ export default function StudentsPage() {
           />
         </div>
 
-        {/* ヘッダー */}
-        <div className="mb-8">
-          <div className="flex justify-between items-start">
-            <div>
-              <h1 className="text-3xl font-bold text-primary-700 mb-2">生徒管理</h1>
-              <p className="text-gray-600">
-                全{students.length}名の生徒が登録されています
-              </p>
-            </div>
+        {/* ページヘッダー */}
+        <PageHeader
+          title="生徒管理"
+          description={`全${students.length}名の生徒が登録されています`}
+          icon="👥"
+          colorTheme="primary"
+          actions={
             <Button asChild>
               <Link href="/students/new">
                 新規生徒登録
               </Link>
             </Button>
-          </div>
-        </div>
+          }
+        />
 
         {/* 検索・フィルター */}
         <Card className="mb-6">

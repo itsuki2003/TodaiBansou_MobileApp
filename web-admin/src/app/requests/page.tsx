@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/ui/Header';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import PageHeader from '@/components/ui/PageHeader';
 import {
   UnifiedRequest,
   RequestFilter,
@@ -340,10 +341,10 @@ export default function RequestsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
         <Header />
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
           <span className="ml-2 text-gray-600">申請データを読み込み中...</span>
         </div>
       </div>
@@ -351,40 +352,38 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <Header />
       
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Breadcrumb items={breadcrumbItems} />
         
         <div className="mt-8">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                生徒申請一覧
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                欠席申請と追加授業申請の管理
-              </p>
-            </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+          {/* ヘッダー */}
+          <PageHeader
+            title="生徒申請一覧"
+            description="欠席申請と追加授業申請の管理"
+            icon="📝"
+            colorTheme="secondary"
+            actions={
               <button
                 onClick={fetchRequests}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-3 border-2 border-white/30 rounded-xl text-white bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-secondary-700 transition-all duration-200 backdrop-blur-sm font-medium"
               >
                 更新
               </button>
-            </div>
-          </div>
+            }
+          />
 
           {error && (
-            <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">
-              <div className="flex">
-                <div className="ml-3">
-                  <h3 className="text-sm font-medium text-red-800">エラーが発生しました</h3>
-                  <div className="mt-2 text-sm text-red-700">
-                    <p>{error}</p>
-                  </div>
+            <div className="mb-6 bg-gradient-to-r from-error-50 to-error-100 border border-error-200 rounded-xl p-6 shadow-lg">
+              <div className="flex items-start space-x-4">
+                <div className="w-8 h-8 bg-gradient-to-br from-error-500 to-error-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <span className="text-white text-sm font-bold">!</span>
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-error-800 mb-2">エラーが発生しました</h3>
+                  <p className="text-error-700">{error}</p>
                 </div>
               </div>
             </div>

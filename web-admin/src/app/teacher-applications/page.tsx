@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingState from '@/components/ui/common/LoadingState';
@@ -143,14 +144,12 @@ export default function TeacherApplicationsPage() {
         />
         
         {/* ページヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            講師登録申請一覧
-          </h1>
-          <p className="text-gray-600">
-            講師からの登録申請を確認・承認・拒否できます
-          </p>
-        </div>
+        <PageHeader
+          title="講師登録申請一覧"
+          description="講師からの登録申請を確認・承認・拒否できます"
+          icon="👔"
+          colorTheme="primary"
+        />
 
         {/* フィルタ・検索 */}
         <Card className="mb-6 border-0 shadow-lg bg-white/80 backdrop-blur-sm">

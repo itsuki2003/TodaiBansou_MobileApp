@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import PageHeader from '@/components/ui/PageHeader';
 import { TeacherDashboardData, QuickAction } from '@/types/teacher';
 import TeacherProfile from './components/TeacherProfile';
 import AssignedStudents from './components/AssignedStudents';
@@ -19,7 +20,7 @@ export default function TeacherDashboardPage() {
     error,
     updateProfile,
     refreshData
-  } = useTeacherData(user?.id);
+  } = useTeacherData(user?.role === 'teacher' ? user.id : undefined);
 
   // クイックアクション定義
   const quickActions: QuickAction[] = [
@@ -114,24 +115,18 @@ export default function TeacherDashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ヘッダー */}
-      <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                講師ダッシュボード
-              </h1>
-              <p className="mt-1 text-sm text-gray-600">
-                {teacher.full_name}さん、お疲れさまです
-              </p>
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <PageHeader
+          title="講師ダッシュボード"
+          description={`${teacher.full_name}さん、お疲れさまです`}
+          icon="🎓"
+          colorTheme="primary"
+          actions={
+            <div className="text-sm text-white/90">
+              最終ログイン: {new Date().toLocaleDateString('ja-JP')}
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-sm text-gray-500">
-                最終ログイン: {new Date().toLocaleDateString('ja-JP')}
-              </div>
-            </div>
-          </div>
-        </div>
+          }
+        />
       </div>
 
       {/* タブナビゲーション */}

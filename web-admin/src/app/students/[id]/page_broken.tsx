@@ -106,22 +106,20 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
   // データがない場合
   if (!student) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
+      <div className="min-h-screen bg-gray-50">
         <Header />
         <div className="max-w-4xl mx-auto p-8">
-          <div className="bg-gradient-to-r from-warning-50 to-warning-100 border border-warning-200 rounded-xl p-8 text-center shadow-lg">
-            <div className="w-16 h-16 bg-gradient-to-br from-warning-500 to-warning-600 rounded-full flex items-center justify-center mx-auto mb-6">
-              <span className="text-white text-3xl font-bold">⚠</span>
-            </div>
-            <h2 className="text-2xl font-bold text-warning-800 mb-4">
+          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-6 text-center">
+            <div className="text-yellow-600 text-4xl mb-4">⚠</div>
+            <h2 className="text-lg font-medium text-yellow-800 mb-2">
               生徒が見つかりません
             </h2>
-            <p className="text-warning-700 mb-6 text-lg">
+            <p className="text-yellow-700 mb-4">
               指定された生徒情報が見つかりませんでした。
             </p>
             <Link
               href="/students"
-              className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-lg inline-block"
+              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 inline-block"
             >
               生徒一覧に戻る
             </Link>
@@ -188,19 +186,24 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
           </div>
           
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-            {/* 氏名・フリガナ */}
+            {/* 生徒氏名 */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 生徒氏名
               </label>
-              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium">
-                {student.full_name}
+              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium"
+                {student.full_name || '-'}
               </div>
-              {student.furigana_name && (
-                <div className="mt-2 px-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-600 text-sm">
-                  {student.furigana_name}
-                </div>
-              )}
+            </div>
+
+            {/* フリガナ */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                フリガナ
+              </label>
+              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium"
+                {student.furigana_name || '-'}
+              </div>
             </div>
 
             {/* 学年 */}
@@ -208,7 +211,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 学年
               </label>
-              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium">
+              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium"
                 {student.grade || '-'}
               </div>
             </div>
@@ -218,7 +221,7 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 通塾先
               </label>
-              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium">
+              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium"
                 {student.school_attended || '-'}
               </div>
             </div>
@@ -228,8 +231,8 @@ export default function StudentDetailPage({ params }: StudentDetailPageProps) {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 入会日
               </label>
-              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium">
-                {formatDate(student.enrollment_date)}
+              <div className="px-4 py-3 bg-primary-50/50 border border-primary-200 rounded-xl text-gray-900 font-medium"
+                {formatDate(student.enrollment_date) || '-'}
               </div>
             </div>
 

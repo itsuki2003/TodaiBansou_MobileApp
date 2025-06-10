@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/ui/Header';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import PageHeader from '@/components/ui/PageHeader';
 import { 
   StudentWithAssignmentDetails, 
   TeacherOption, 
@@ -341,24 +342,20 @@ export default function AssignmentsPage() {
         <Breadcrumb items={breadcrumbItems} />
         
         <div className="mt-8">
-          <div className="md:flex md:items-center md:justify-between">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-2xl font-bold leading-7 text-gray-900 sm:text-3xl sm:truncate">
-                担当割り当て管理
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                生徒と講師の担当関係を管理します
-              </p>
-            </div>
-            <div className="mt-4 flex md:mt-0 md:ml-4">
+          <PageHeader
+            title="担当割り当て管理"
+            description="生徒と講師の担当関係を管理します"
+            icon="👥"
+            colorTheme="secondary"
+            actions={
               <button
                 onClick={() => setShowHistory(!showHistory)}
-                className="ml-3 inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                className="px-6 py-3 border-2 border-white/30 rounded-xl text-white bg-white/10 hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-secondary-700 transition-all duration-200 backdrop-blur-sm font-medium"
               >
                 {showHistory ? '一覧表示' : '変更履歴'}
               </button>
-            </div>
-          </div>
+            }
+          />
 
           {error && (
             <div className="mt-4 bg-red-50 border border-red-200 rounded-md p-4">

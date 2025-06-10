@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter, useParams } from 'next/navigation';
+import { useState, useEffect, use } from 'react';
+import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Breadcrumb, { breadcrumbPaths, useBreadcrumbStudentName } from '@/components/ui/Breadcrumb';
 import StudentForm from '@/components/students/StudentForm';
@@ -9,10 +9,13 @@ import { StudentFormData, GetStudentResponse, UpdateStudentResponse } from '@/ty
 import { PageLoader } from '@/components/ui/common/AppLoader';
 import { ErrorDisplay } from '@/components/ui/common/ErrorDisplay';
 
-export default function EditStudentPage() {
+interface EditStudentPageProps {
+  params: Promise<{ id: string }>;
+}
+
+export default function EditStudentPage({ params }: EditStudentPageProps) {
   const router = useRouter();
-  const params = useParams();
-  const studentId = params.id as string;
+  const { id: studentId } = use(params);
 
   const [loading, setLoading] = useState(true);
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -114,15 +117,17 @@ export default function EditStudentPage() {
   // 成功画面
   if (success) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
         <Header />
         <div className="max-w-2xl mx-auto p-8">
-          <div className="bg-green-50 border border-green-200 rounded-md p-6 text-center">
-            <div className="text-green-600 text-4xl mb-4">✓</div>
-            <h2 className="text-lg font-medium text-green-800 mb-2">
+          <div className="bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-2xl p-8 text-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-success-500 to-success-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-white text-3xl font-bold">✓</span>
+            </div>
+            <h2 className="text-2xl font-bold text-success-800 mb-3">
               生徒情報の更新が完了しました
             </h2>
-            <p className="text-green-700">
+            <p className="text-success-700 text-lg">
               2秒後に生徒一覧ページに移動します...
             </p>
           </div>
@@ -134,20 +139,22 @@ export default function EditStudentPage() {
   // データがない場合
   if (!studentData) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
         <Header />
         <div className="max-w-4xl mx-auto p-8">
-          <div className="bg-yellow-50 border border-yellow-200 rounded-md p-6 text-center">
-            <div className="text-yellow-600 text-4xl mb-4">⚠</div>
-            <h2 className="text-lg font-medium text-yellow-800 mb-2">
+          <div className="bg-gradient-to-r from-warning-50 to-warning-100 border border-warning-200 rounded-2xl p-8 text-center shadow-lg">
+            <div className="w-16 h-16 bg-gradient-to-br from-warning-500 to-warning-600 rounded-full flex items-center justify-center mx-auto mb-6">
+              <span className="text-white text-3xl font-bold">⚠</span>
+            </div>
+            <h2 className="text-2xl font-bold text-warning-800 mb-3">
               生徒が見つかりません
             </h2>
-            <p className="text-yellow-700 mb-4">
+            <p className="text-warning-700 mb-6 text-lg">
               指定された生徒情報が見つかりませんでした。
             </p>
             <button
               onClick={() => router.push('/students')}
-              className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2 transition-all duration-200 font-medium shadow-lg"
             >
               生徒一覧に戻る
             </button>
@@ -158,7 +165,7 @@ export default function EditStudentPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <Header />
       <div className="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
         {/* パンくずリスト */}
@@ -175,10 +182,18 @@ export default function EditStudentPage() {
 
         {/* ヘッダー */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">生徒情報編集</h1>
-          <p className="text-gray-600">
-            生徒情報を更新してください。
-          </p>
+          <div className="relative overflow-hidden bg-gradient-to-r from-secondary-600 via-secondary-700 to-secondary-800 rounded-2xl p-8 text-white shadow-lg">
+            {/* 背景装飾 */}
+            <div className="absolute top-0 right-0 -mt-4 -mr-4 w-20 h-20 bg-accent-400 rounded-full opacity-20 blur-xl"></div>
+            <div className="absolute bottom-0 left-0 -mb-6 -ml-6 w-24 h-24 bg-accent-300 rounded-full opacity-10 blur-2xl"></div>
+            
+            <div className="relative">
+              <h1 className="text-3xl font-bold mb-2">生徒情報編集</h1>
+              <p className="text-white/90 text-lg">
+                {studentName || '生徒'}の情報を更新してください
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* フォーム */}

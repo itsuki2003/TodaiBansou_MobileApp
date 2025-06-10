@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, use } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
@@ -16,16 +16,16 @@ import { format, addWeeks, subWeeks, startOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
 interface TodoListDetailPageProps {
-  params: {
+  params: Promise<{
     studentId: string;
     weekStart: string;
-  };
+  }>;
 }
 
 export default function TodoListDetailPage({ params }: TodoListDetailPageProps) {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
-  const { studentId, weekStart } = params;
+  const { studentId, weekStart } = use(params);
 
   // weekStartパラメータの検証
   const validateWeekStart = (weekStartParam: string): string => {

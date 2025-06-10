@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import PageHeader from '@/components/ui/PageHeader';
 import { Card, CardContent } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import LoadingState from '@/components/ui/common/LoadingState';
@@ -13,6 +14,11 @@ import { supabase } from '@/lib/supabaseClient';
 import { Student } from '@/types/todoList';
 import { format, startOfWeek, addWeeks, subWeeks, endOfWeek } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+import { 
+  faUser, faCalendarWeek, faEdit, faChevronLeft, faChevronRight,
+  faUsers, faClipboardList, faArrowRight, faChevronDown, faCheck
+} from '@fortawesome/free-solid-svg-icons';
 
 export default function TodoListsPage() {
   const { user, loading: authLoading } = useAuth();
@@ -50,11 +56,11 @@ export default function TodoListsPage() {
         .order('full_name');
 
       // 講師の場合は担当生徒のみ取得
-      if (user?.role === 'teacher') {
+      if (user?.role === 'teacher' && user.profile?.id) {
         const { data: assignments } = await supabase
           .from('assignments')
           .select('student_id')
-          .eq('teacher_id', user.id)
+          .eq('teacher_id', user.profile.id)
           .eq('status', '有効');
 
         if (assignments && assignments.length > 0) {
@@ -153,7 +159,7 @@ export default function TodoListsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-primary-50 via-white to-accent-50">
       <Header />
       
       <main className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -166,13 +172,13 @@ export default function TodoListsPage() {
         />
         
         {/* ページヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            やることリスト管理
-          </h1>
-          <p className="text-gray-600">
-            生徒の週間学習プランを作成・編集できます
-          </p>
+        <div className="mt-6">
+          <PageHeader
+            title="やることリスト管理"
+            description="生徒の週間学習プランを作成・編集できます"
+            icon="📋"
+            colorTheme="primary"
+          />
         </div>
 
         {/* エラー表示 */}
@@ -220,22 +226,33 @@ export default function TodoListsPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {/* 生徒選択 */}
-            <Card>
-              <CardContent className="p-6">
-                <div className="flex flex-col md:flex-row gap-4 items-start md:items-center">
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      生徒を選択
-                    </label>
+          <div className="space-y-8">
+            {/* ステップ1: 生徒選択 */}
+            <Card className="shadow-lg border-0">
+              <CardContent className="p-8">
+                <div className="flex items-center space-x-4 mb-6">
+                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                    1
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">生徒を選択</h2>
+                    <p className="text-gray-600">やることリストを管理する生徒を選んでください</p>
+                  </div>
+                </div>
+                
+                <div className="max-w-md">
+                  <label className="block text-sm font-medium text-gray-700 mb-3">
+                    <FontAwesomeIcon icon={faUser} className="mr-2 text-primary-500" />
+                    生徒名
+                  </label>
+                  <div className="relative">
                     <select
                       value={selectedStudent?.id || ''}
                       onChange={(e) => {
                         const student = students.find(s => s.id === e.target.value);
                         if (student) handleStudentChange(student);
                       }}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      className="w-full px-4 py-3 pr-10 border-2 border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-all duration-200 text-gray-900 font-medium bg-white shadow-sm appearance-none"
                     >
                       <option value="">生徒を選択してください</option>
                       {students.map((student) => (
@@ -244,72 +261,105 @@ export default function TodoListsPage() {
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  {/* 週選択 */}
-                  <div className="flex-1">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      対象週
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleWeekChange('prev')}
-                      >
-                        ← 前週
-                      </Button>
-                      <span className="text-sm font-medium text-gray-900 px-3">
-                        {getCurrentWeekDisplay()}
-                      </span>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleWeekChange('next')}
-                      >
-                        次週 →
-                      </Button>
+                    <div className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
+                      <FontAwesomeIcon icon={faChevronDown} className="text-gray-400 w-4 h-4" />
                     </div>
                   </div>
+                  
+                  {selectedStudent && (
+                    <div className="mt-4 p-4 bg-primary-50 rounded-xl border border-primary-200">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-10 h-10 bg-primary-500 rounded-full flex items-center justify-center text-white">
+                          <FontAwesomeIcon icon={faUser} />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{selectedStudent.full_name}</div>
+                          <div className="text-sm text-gray-600">{selectedStudent.grade || '学年未設定'}</div>
+                        </div>
+                        <div className="ml-auto">
+                          <div className="w-6 h-6 bg-primary-500 rounded-full flex items-center justify-center">
+                            <FontAwesomeIcon icon={faCheck} className="text-white text-sm" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
 
-            {/* やることリスト管理パネル */}
             {selectedStudent && (
-              <Card>
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">
-                        {selectedStudent.full_name}さんのやることリスト
-                      </h3>
-                      <p className="text-sm text-gray-600">
-                        {getCurrentWeekDisplay()}
-                      </p>
+              <>
+                {/* ステップ2: 週選択 */}
+                <Card className="shadow-lg border-0">
+                  <CardContent className="p-8">
+                    <div className="flex items-center space-x-4 mb-6">
+                      <div className="w-10 h-10 bg-gradient-to-br from-secondary-500 to-secondary-600 rounded-full flex items-center justify-center text-white font-bold text-lg shadow-lg">
+                        2
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold text-gray-900">対象週を選択</h2>
+                        <p className="text-gray-600">編集したい週を選んでください</p>
+                      </div>
                     </div>
-                    <Button
-                      variant="primary"
-                      onClick={handleTodoListOpen}
-                    >
-                      編集画面を開く
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                    
+                    <div className="flex items-center justify-center space-x-4">
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleWeekChange('prev')}
+                        className="flex items-center space-x-2"
+                      >
+                        <FontAwesomeIcon icon={faChevronLeft} />
+                        <span>前週</span>
+                      </Button>
+                      
+                      <div className="bg-gradient-to-r from-secondary-100 to-secondary-50 px-6 py-4 rounded-xl border border-secondary-200 min-w-[280px] text-center">
+                        <div className="flex items-center justify-center space-x-2 mb-1">
+                          <FontAwesomeIcon icon={faCalendarWeek} className="text-secondary-600" />
+                          <span className="text-lg font-bold text-gray-900">{getCurrentWeekDisplay()}</span>
+                        </div>
+                        <div className="text-sm text-gray-600">月曜日〜日曜日</div>
+                      </div>
+                      
+                      <Button
+                        variant="secondary"
+                        onClick={() => handleWeekChange('next')}
+                        className="flex items-center space-x-2"
+                      >
+                        <span>次週</span>
+                        <FontAwesomeIcon icon={faChevronRight} />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
 
-            {/* 最近のやることリスト一覧 */}
-            <Card>
-              <CardContent className="p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">
-                  最近作成されたやることリスト
-                </h3>
-                <div className="text-center text-gray-500 py-8">
-                  <p>最近のやることリスト一覧表示機能は実装予定です</p>
-                </div>
-              </CardContent>
-            </Card>
+                {/* ステップ3: アクション */}
+                <Card className="shadow-lg border-0 bg-gradient-to-r from-accent-50 to-accent-100 border-accent-200">
+                  <CardContent className="p-8">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-4">
+                        <div className="w-10 h-10 bg-gradient-to-br from-accent-500 to-accent-600 rounded-full flex items-center justify-center text-gray-900 font-bold text-lg shadow-lg">
+                          3
+                        </div>
+                        <div>
+                          <h2 className="text-xl font-bold text-gray-900">{selectedStudent.full_name}さんのやることリスト</h2>
+                          <p className="text-gray-700">{getCurrentWeekDisplay()}</p>
+                        </div>
+                      </div>
+                      
+                      <Button
+                        onClick={handleTodoListOpen}
+                        className="bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white px-8 py-3 rounded-xl font-medium shadow-lg hover:shadow-xl transition-all duration-200 flex items-center space-x-3"
+                      >
+                        <FontAwesomeIcon icon={faEdit} />
+                        <span>編集画面を開く</span>
+                        <FontAwesomeIcon icon={faArrowRight} />
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         )}
       </main>

@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
 import Breadcrumb from '@/components/ui/Breadcrumb';
+import PageHeader from '@/components/ui/PageHeader';
 
 import { LessonSlotWithDetails, CalendarEvent, Student, ModalState } from '@/types/schedule';
 import StudentSelector from './components/StudentSelector';
@@ -38,6 +39,7 @@ export default function SchedulePage() {
   const router = useRouter();
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentView, setCurrentView] = useState<'month' | 'week' | 'day'>('month');
   const [modalState, setModalState] = useState<ModalState>({
     isOpen: false,
     mode: 'view'
@@ -114,11 +116,15 @@ export default function SchedulePage() {
 
   // 空の日時クリック（新規授業追加）
   const handleSlotClick = (slotInfo: { start: Date; end: Date }) => {
+    console.log('📅 スロットクリック:', slotInfo);
+    console.log('📅 選択中の生徒:', selectedStudent);
+    
     if (!selectedStudent) {
       alert('まず生徒を選択してください');
       return;
     }
 
+    console.log('📅 モーダルを開きます');
     setModalState({
       isOpen: true,
       mode: 'create',
@@ -198,14 +204,12 @@ export default function SchedulePage() {
         />
         
         {/* ページヘッダー */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            授業スケジュール管理
-          </h1>
-          <p className="text-gray-600">
-            授業・面談のスケジュールを管理できます
-          </p>
-        </div>
+        <PageHeader
+          title="授業スケジュール管理"
+          description="授業・面談のスケジュールを管理できます"
+          icon="📅"
+          colorTheme="success"
+        />
         
         {/* 生徒選択 */}
         <div className="mb-6">
@@ -218,27 +222,50 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* ヘルプテキスト */}
+        {/* ヘルプテキストと手動追加ボタン */}
         {selectedStudent && (
           <div className="bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl p-6 mb-6 shadow-sm">
-            <div className="flex items-start space-x-3">
-              <FontAwesomeIcon icon={faInfoCircle} className="w-5 h-5 text-success-600 mt-1 flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold text-success-900 mb-3">操作方法</h3>
-                <ul className="text-sm text-success-800 space-y-2">
-                  <li className="flex items-start space-x-2">
-                    <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                    <span>授業をクリックすると詳細を表示します</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                    <span>空いている時間をクリックすると新しい授業を追加できます</span>
-                  </li>
-                  <li className="flex items-start space-x-2">
-                    <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                    <span>授業を右クリックするとコンテキストメニューが表示されます</span>
-                  </li>
-                </ul>
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-3">
+                <FontAwesomeIcon icon={faInfoCircle} className="w-5 h-5 text-success-600 mt-1 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-success-900 mb-3">操作方法</h3>
+                  <ul className="text-sm text-success-800 space-y-2">
+                    <li className="flex items-start space-x-2">
+                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
+                      <span>授業をクリックすると詳細を表示します</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
+                      <span>下のボタンから新しい授業を追加できます</span>
+                    </li>
+                    <li className="flex items-start space-x-2">
+                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
+                      <span>授業を右クリックするとコンテキストメニューが表示されます</span>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div className="ml-6">
+                <button
+                  onClick={() => {
+                    console.log('📅 手動で新規授業追加ボタンクリック');
+                    const today = new Date();
+                    const startTime = new Date(today);
+                    startTime.setHours(16, 0, 0, 0);
+                    const endTime = new Date(today);
+                    endTime.setHours(17, 0, 0, 0);
+                    
+                    setModalState({
+                      isOpen: true,
+                      mode: 'create',
+                      selectedDate: today
+                    });
+                  }}
+                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-lg hover:shadow-xl"
+                >
+                  ＋ 新規授業追加
+                </button>
               </div>
             </div>
           </div>
@@ -250,7 +277,9 @@ export default function SchedulePage() {
             localizer={localizer}
             events={calendarEvents}
             currentDate={currentDate}
+            currentView={currentView}
             onNavigate={setCurrentDate}
+            onView={setCurrentView}
             onEventClick={handleEventClick}
             onSlotClick={handleSlotClick}
             selectedStudent={selectedStudent}

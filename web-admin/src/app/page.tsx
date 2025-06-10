@@ -112,7 +112,7 @@ export default function Home() {
                 <h1 className="text-4xl font-bold mb-4 text-white">
                   東大伴走 管理画面
                 </h1>
-                <p className="text-primary-100 text-xl">
+                <p className="text-white/90 text-xl">
                   中学受験生の学習をサポートする統合管理システム
                 </p>
               </div>
@@ -120,11 +120,11 @@ export default function Home() {
               <div className="flex flex-wrap gap-4 text-sm">
                 <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-3 py-1 backdrop-blur-sm">
                   <span className="w-2 h-2 bg-accent-400 rounded-full animate-pulse"></span>
-                  <span>リアルタイム管理</span>
+                  <span className="text-white">リアルタイム管理</span>
                 </div>
                 <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-3 py-1 backdrop-blur-sm">
                   <span className="w-2 h-2 bg-green-400 rounded-full"></span>
-                  <span>システム正常稼働中</span>
+                  <span className="text-white">システム正常稼働中</span>
                 </div>
               </div>
             </div>

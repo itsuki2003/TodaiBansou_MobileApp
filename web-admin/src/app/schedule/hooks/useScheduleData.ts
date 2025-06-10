@@ -11,7 +11,7 @@ export function useScheduleData(studentId?: string, currentDate?: Date) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const supabase = useMemo(() => createClient(), []);
+  const supabase = createClient();
 
   // 生徒一覧の取得
   const fetchStudents = useCallback(async () => {

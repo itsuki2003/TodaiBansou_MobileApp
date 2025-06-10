@@ -135,13 +135,18 @@ export function useTeacherData(userId?: string) {
     setError(null);
 
     try {
+      console.log('講師データを取得中..., userId:', userId);
+      
       // 講師プロフィールを取得
       const teacher = await fetchTeacherProfile(userId);
       if (!teacher) {
+        console.error('講師プロフィールが見つかりません:', userId);
         setError('講師情報が見つかりません。システム管理者にお問い合わせください。');
         setLoading(false);
         return;
       }
+
+      console.log('講師プロフィール取得成功:', teacher);
 
       // 並行して関連データを取得
       const [assignedStudents, upcomingLessons] = await Promise.all([
