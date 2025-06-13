@@ -220,7 +220,7 @@ export default function CalendarScreen() {
       setError(null);
 
       if (!selectedStudent) {
-        console.log('No student selected for calendar');
+        // 生徒が選択されていない場合は何もしない
         setCalendarData({});
         setLoading(false);
         return;

@@ -12,37 +12,48 @@ import {
   Image,
   ScrollView,
 } from 'react-native';
-import { Link, router } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { Link } from 'expo-router';
+import { useAuth } from '../../contexts/AuthContext';
+import { validateEmail, validatePassword } from '../../utils/validation';
 import { Mail, Lock, BookOpen } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { signIn } = useAuth();
 
   const handleLogin = async () => {
-    if (!email || !password) {
-      Alert.alert('エラー', 'メールアドレスとパスワードを入力してください。');
+    // 入力検証
+    const emailValidation = validateEmail(email);
+    if (!emailValidation.isValid) {
+      Alert.alert('エラー', emailValidation.error);
+      return;
+    }
+
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.isValid) {
+      Alert.alert('エラー', passwordValidation.error);
       return;
     }
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      console.log('ログイン成功:', data);
-      router.replace('/(tabs)');
+      await signIn(email.trim().toLowerCase(), password);
+      // ナビゲーションはAuthContextとapp/_layout.tsxで自動的に処理される
     } catch (error: any) {
-      console.error('Login error:', error);
-      Alert.alert('ログインエラー', 'メールアドレスまたはパスワードが正しくありません。');
+      let errorMessage = 'メールアドレスまたはパスワードが正しくありません。';
+      
+      // Supabaseエラーの詳細処理
+      if (error?.message?.includes('Invalid login credentials')) {
+        errorMessage = 'メールアドレスまたはパスワードが正しくありません。';
+      } else if (error?.message?.includes('Email not confirmed')) {
+        errorMessage = 'メールアドレスの確認が完了していません。';
+      } else if (error?.message?.includes('Too many requests')) {
+        errorMessage = 'ログイン試行回数が上限に達しました。しばらく待ってからお試しください。';
+      }
+      
+      Alert.alert('ログインエラー', errorMessage);
     } finally {
       setLoading(false);
     }
@@ -104,12 +115,12 @@ export default function LoginScreen() {
           </TouchableOpacity>
 
           <View style={styles.links}>
-            <Link href="/signup" style={styles.link}>
+            <Link href="/(auth)/signup" style={styles.link}>
               はじめての方は
               <Text style={styles.linkHighlight}>新規登録</Text>
               へ
             </Link>
-            <Link href="/reset-password" style={styles.linkSecondary}>
+            <Link href="/(auth)/reset-password" style={styles.linkSecondary}>
               パスワードをお忘れの方はこちら
             </Link>
           </View>

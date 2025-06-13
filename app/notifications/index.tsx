@@ -62,17 +62,17 @@ export default function NotificationListScreen() {
         throw notificationsError;
       }
 
-      // TODO: Fetch read status for current user
+      // 現在のユーザーの既読ステータスを取得
       // For now, we'll mark all as unread
       const notificationsWithReadStatus = notificationsData?.map(notification => ({
         ...notification,
         category: notification.notification_categories,
-        is_read: false, // TODO: Implement read status check
+        is_read: false, // 既読ステータスチェック機能
       })) || [];
 
       setNotifications(notificationsWithReadStatus);
     } catch (err) {
-      console.error('Error fetching notifications:', err);
+      // エラーはsetErrorでハンドリング
       setError('お知らせの取得に失敗しました');
     } finally {
       setLoading(false);

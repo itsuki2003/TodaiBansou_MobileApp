@@ -8,6 +8,7 @@ import {
   TouchableOpacity,
   Alert,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   Bell, 
   User, 
@@ -30,9 +31,47 @@ interface RecentNotification {
 }
 
 export default function SettingsScreen() {
-  const { students, selectedStudent, selectStudent, clearStudentSelection } = useAuth();
+  const { students, selectedStudent, selectStudent, clearStudentSelection, signOut, user } = useAuth();
   const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
+  
+  // AsyncStorage key for read notifications
+  const getReadNotificationsKey = (userId: string) => `read_notifications_${userId}`;
+  
+  // Get read notification IDs from AsyncStorage
+  const getReadNotifications = async (): Promise<string[]> => {
+    try {
+      if (!user?.id) return [];
+      const key = getReadNotificationsKey(user.id);
+      const storedReadIds = await AsyncStorage.getItem(key);
+      return storedReadIds ? JSON.parse(storedReadIds) : [];
+    } catch (error) {
+      // エラーハンドリング: AsyncStorageエラーは無視
+      return [];
+    }
+  };
+  
+  // Mark notification as read
+  const markNotificationAsRead = async (notificationId: string) => {
+    try {
+      if (!user?.id) return;
+      const key = getReadNotificationsKey(user.id);
+      const readIds = await getReadNotifications();
+      if (!readIds.includes(notificationId)) {
+        const updatedReadIds = [...readIds, notificationId];
+        await AsyncStorage.setItem(key, JSON.stringify(updatedReadIds));
+        // Update state to reflect the change
+        setRecentNotifications(prev => 
+          prev.map(notif => 
+            notif.id === notificationId ? { ...notif, read: true } : notif
+          )
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      }
+    } catch (error) {
+      // エラーハンドリング: 通知の既読マークエラーは無視
+    }
+  };
   
   const fetchRecentNotifications = useCallback(async () => {
     try {
@@ -52,38 +91,40 @@ export default function SettingsScreen() {
         .limit(3);
 
       if (notificationsError) {
-        console.error('Error fetching notifications:', notificationsError);
+        // エラーハンドリング: 通知取得エラーは無視
         return;
       }
 
-      // TODO: Fetch read status for current user
-      // For now, we'll mark all as unread
+      // Get read status for current user
+      const readNotificationIds = await getReadNotifications();
       const formattedNotifications: RecentNotification[] = notificationsData?.map(notification => ({
         id: notification.id,
         title: notification.title,
         category: (notification.notification_categories as any)?.name || 'お知らせ',
         date: notification.publish_timestamp,
-        read: false, // TODO: Implement read status check
+        read: readNotificationIds.includes(notification.id),
       })) || [];
 
       setRecentNotifications(formattedNotifications);
       setUnreadCount(formattedNotifications.filter(n => !n.read).length);
     } catch (err) {
-      console.error('Error fetching recent notifications:', err);
+      // エラーハンドリング: 通知取得エラーは無視
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     fetchRecentNotifications();
   }, [fetchRecentNotifications]);
 
-  const handleNotificationPress = (notification: RecentNotification) => {
+  const handleNotificationPress = async (notification: RecentNotification) => {
+    // Mark as read when notification is tapped
+    await markNotificationAsRead(notification.id);
     router.push(`/notifications/${notification.id}`);
   };
   
   const handleProfile = () => {
     // Navigate to profile screen
-    Alert.alert('プロフィール画面へ移動します');
+    router.push('/profile' as any);
   };
 
   const handleStudentSwitch = () => {
@@ -130,9 +171,14 @@ export default function SettingsScreen() {
         {
           text: 'ログアウト',
           style: 'destructive',
-          onPress: () => {
-            // Log out logic would go here
-            Alert.alert('ログアウトしました');
+          onPress: async () => {
+            try {
+              await signOut();
+              // SignOut成功時は自動的にログイン画面にリダイレクトされる
+            } catch (error) {
+              // エラーはAlertで表示
+              Alert.alert('エラー', 'ログアウトに失敗しました。もう一度お試しください。');
+            }
           },
         },
       ],

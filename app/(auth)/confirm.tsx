@@ -48,7 +48,7 @@ export default function ConfirmScreen() {
           router.replace('/(tabs)');
         }
       } catch (err: any) {
-        console.error('Confirmation error:', err);
+        // エラーはAlertで表示するため、console.errorは削除
         setError('メールアドレスの確認に失敗しました。');
       } finally {
         setLoading(false);

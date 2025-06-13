@@ -43,7 +43,7 @@ export default function ChatMessage({ message, onAttachmentPress }: ChatMessageP
         Alert.alert('エラー', 'このURLを開くことができません');
       }
     } catch (err) {
-      console.error('Error opening URL:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'URLを開く際にエラーが発生しました');
     }
   };

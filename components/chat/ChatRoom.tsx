@@ -129,7 +129,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
 
       setMessages(formattedMessages);
     } catch (err) {
-      console.error('Error fetching messages:', err);
+      // エラーはsetErrorでハンドリング
       setError('メッセージの取得に失敗しました');
     } finally {
       setLoading(false);
@@ -254,14 +254,14 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
       setError(null); // エラーをクリア
 
     } catch (err) {
-      console.error('Error sending message:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       
       // アップロードしたファイルをクリーンアップ
       if (uploadedFilePath) {
         await supabase.storage
           .from('chat-files')
           .remove([uploadedFilePath])
-          .catch(cleanupErr => console.error('Cleanup error:', cleanupErr));
+          .catch(cleanupErr => {}); // クリーンアップエラーは無視
       }
 
       // リトライ処理
@@ -308,7 +308,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         name: file.name,
       }]);
     } catch (err) {
-      console.error('Error picking file:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       setError('ファイルの選択に失敗しました');
     }
   };
@@ -321,7 +321,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
 
   const handleAttachmentPress = (url: string, type: string) => {
     // ファイルを開く処理（必要に応じて実装）
-    console.log(`Opening ${type} file:`, url);
+    // ファイルを開く処理
   };
 
   if (loading) {
@@ -347,7 +347,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           try {
             router.push('/(tabs)/chat');
           } catch (error) {
-            console.error('Navigation error:', error);
+            // ナビゲーションエラーは無視
             // フォールバック: router.back()を試行
             router.back();
           }

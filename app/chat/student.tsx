@@ -48,7 +48,7 @@ export default function StudentChatScreen() {
         setError('チャットグループが見つかりません');
       }
     } catch (err) {
-      console.error('Error fetching student chat group:', err);
+      // エラーはsetErrorでハンドリング
       setError('チャットグループの取得に失敗しました');
     } finally {
       setLoading(false);

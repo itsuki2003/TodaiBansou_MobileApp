@@ -7,7 +7,7 @@ import {
   Animated,
   Dimensions,
 } from 'react-native';
-import { Check } from 'lucide-react-native';
+import { Check, PartyPopper } from 'lucide-react-native';
 
 export interface TaskItemProps {
   title: string;
@@ -161,7 +161,9 @@ export default function TaskItem({ title, isCompleted, onToggle, onCelebration }
           pointerEvents="none"
         >
           <Text style={styles.celebrationText}>{celebrationMessage}</Text>
-          <Text style={styles.celebrationEmoji}>🎉</Text>
+          <View style={styles.celebrationIconContainer}>
+            <PartyPopper size={16} color="#92400E" />
+          </View>
         </Animated.View>
       )}
     </View>
@@ -250,7 +252,7 @@ const styles = StyleSheet.create({
     color: '#92400E',
     marginRight: 4,
   },
-  celebrationEmoji: {
-    fontSize: 16,
+  celebrationIconContainer: {
+    marginLeft: 4,
   },
 });

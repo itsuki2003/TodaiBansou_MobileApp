@@ -62,7 +62,7 @@ export default function ChatGroupScreen() {
         throw new Error('アクセス権限がありません');
       }
     } catch (err) {
-      console.error('Error checking access:', err);
+      // エラーはsetErrorでハンドリング
       setError(err instanceof Error ? err.message : 'アクセス権限の確認に失敗しました');
     } finally {
       setLoading(false);

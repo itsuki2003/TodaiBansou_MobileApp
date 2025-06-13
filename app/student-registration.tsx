@@ -14,10 +14,15 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { BookOpen, User, School } from 'lucide-react-native';
+import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function StudentRegistrationScreen() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [enrollmentDate, setEnrollmentDate] = useState(new Date());
   const [formData, setFormData] = useState({
     fullName: '',
     furiganaName: '',
@@ -46,18 +51,30 @@ export default function StudentRegistrationScreen() {
     return true;
   };
 
+  const onDateChange = (_: any, selectedDate?: Date) => {
+    setShowDatePicker(false);
+    if (selectedDate) {
+      setEnrollmentDate(selectedDate);
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    return `${year}年${month}月${day}日`;
+  };
+
   const handleRegistration = async () => {
     if (!validateForm()) return;
 
+    if (!user) {
+      Alert.alert('エラー', 'ユーザー情報が取得できません。');
+      return;
+    }
+
     try {
       setLoading(true);
-      
-      // 現在のユーザーを取得
-      const { data: { user }, error: userError } = await supabase.auth.getUser();
-      
-      if (userError || !user) {
-        throw new Error('ユーザー情報の取得に失敗しました。');
-      }
 
       // 生徒情報をstudentsテーブルに保存
       const { error: insertError } = await supabase
@@ -70,12 +87,28 @@ export default function StudentRegistrationScreen() {
           school_attended: formData.schoolAttended.trim() || null,
           parent_name: formData.parentName.trim(),
           parent_phone_number: formData.parentPhoneNumber.trim() || null,
-          enrollment_date: new Date().toISOString().split('T')[0],
-          status: '在籍中',
+          enrollment_date: enrollmentDate.toISOString().split('T')[0],
+          status: 'في籍中',
         });
 
       if (insertError) {
         throw insertError;
+      }
+
+      // チャットグループの自動作成
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('id, full_name')
+        .eq('user_id', user.id)
+        .single();
+
+      if (!studentError && studentData) {
+        await supabase
+          .from('chat_groups')
+          .insert({
+            student_id: studentData.id,
+            group_name: `${studentData.full_name}さんのチャット`,
+          });
       }
 
       Alert.alert(
@@ -89,7 +122,7 @@ export default function StudentRegistrationScreen() {
         ]
       );
     } catch (error: any) {
-      console.error('Student registration error:', error);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', '生徒情報の登録に失敗しました。しばらく時間をおいて再度お試しください。');
     } finally {
       setLoading(false);
@@ -169,6 +202,26 @@ export default function StudentRegistrationScreen() {
                 placeholderTextColor="#94A3B8"
               />
             </View>
+
+            <View style={styles.inputContainer}>
+              <Text style={styles.label}>入会日</Text>
+              <TouchableOpacity 
+                style={styles.dateInput}
+                onPress={() => setShowDatePicker(true)}
+              >
+                <Text style={styles.dateText}>{formatDate(enrollmentDate)}</Text>
+              </TouchableOpacity>
+            </View>
+
+            {showDatePicker && (
+              <DateTimePicker
+                value={enrollmentDate}
+                mode="date"
+                display={Platform.OS === 'ios' ? 'spinner' : 'default'}
+                onChange={onDateChange}
+                maximumDate={new Date()}
+              />
+            )}
 
             <View style={styles.sectionHeader}>
               <School size={20} color="#3B82F6" />
@@ -299,6 +352,19 @@ const styles = StyleSheet.create({
     color: '#1E293B',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+  },
+  dateInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    height: 56,
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  dateText: {
+    fontSize: 16,
+    color: '#1E293B',
   },
   button: {
     backgroundColor: '#3B82F6',

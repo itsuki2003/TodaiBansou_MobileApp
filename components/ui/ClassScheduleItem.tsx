@@ -50,7 +50,7 @@ export default function ClassScheduleItem({
         Alert.alert('エラー', 'Google Meetを開くことができません');
       }
     } catch (err) {
-      console.error('Error opening Google Meet:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'Google Meetを開く際にエラーが発生しました');
     }
   };

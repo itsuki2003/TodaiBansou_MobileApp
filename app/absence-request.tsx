@@ -14,6 +14,7 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { format, parseISO, differenceInHours } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { ClipboardList } from 'lucide-react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -43,7 +44,27 @@ export default function AbsenceRequestScreen() {
 
   // 授業情報の取得
   const fetchLessonData = useCallback(async () => {
-    if (!user || !selectedStudent || !lessonId) return;
+    if (!user || !selectedStudent) {
+      setError({
+        type: 'auth',
+        message: 'ユーザー情報が取得できません',
+        details: 'ログインしてから再度お試しください',
+        recoverable: false,
+      });
+      setLoading(false);
+      return;
+    }
+
+    if (!lessonId) {
+      setError({
+        type: 'data',
+        message: '授業が選択されていません',
+        details: 'カレンダーから授業を選択してください',
+        recoverable: false,
+      });
+      setLoading(false);
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -132,7 +153,7 @@ export default function AbsenceRequestScreen() {
       }));
 
     } catch (err) {
-      console.error('授業データ取得エラー:', err);
+      // エラーハンドリング: 授業データ取得エラー
       setError({
         type: 'network',
         message: '授業情報の取得に失敗しました',
@@ -208,7 +229,7 @@ export default function AbsenceRequestScreen() {
         .eq('id', formData.lesson_slot_id);
 
       if (updateLessonError) {
-        console.error('授業ステータス更新エラー:', updateLessonError);
+        // エラーハンドリング: 授業ステータス更新エラー
         // エラーがあっても欠席申請自体は成功しているので続行
       }
 
@@ -228,7 +249,7 @@ export default function AbsenceRequestScreen() {
       );
 
     } catch (err) {
-      console.error('欠席申請エラー:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       setError({
         type: 'network',
         message: '欠席申請の送信に失敗しました',
@@ -436,7 +457,10 @@ export default function AbsenceRequestScreen() {
 
         {/* 注意事項 */}
         <View style={styles.noticeContainer}>
-          <Text style={styles.noticeTitle}>📋 注意事項</Text>
+          <View style={styles.noticeTitleContainer}>
+            <ClipboardList size={16} color="#1E40AF" />
+            <Text style={styles.noticeTitle}>注意事項</Text>
+          </View>
           <Text style={styles.noticeText}>
             • 欠席申請は授業開始5時間前まで可能です{'\n'}
             • 振替授業の日程は後日ご連絡いたします{'\n'}
@@ -696,11 +720,16 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
+  noticeTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   noticeTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1E40AF',
-    marginBottom: 8,
+    marginLeft: 6,
   },
   noticeText: {
     fontSize: 14,

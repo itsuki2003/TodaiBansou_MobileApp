@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter, useSegments } from 'expo-router';
 import { AuthProvider, useAuth } from '../contexts/AuthContext';
+import { ErrorBoundary } from '../components/common/ErrorBoundary';
 import { View, ActivityIndicator } from 'react-native';
 
 // 認証が必要なルートグループ
@@ -10,55 +11,26 @@ const AUTH_GROUP = '(auth)';
 const PROTECTED_GROUP = '(tabs)';
 
 function RootLayoutNav() {
-  const { session, isLoading, isFirstTimeUser, userRoleLoading, needsStudentSelection } = useAuth();
+  const { user, loading, userRole, userRoleLoading } = useAuth();
   const segments = useSegments();
   const router = useRouter();
 
   useEffect(() => {
-    if (isLoading || userRoleLoading) {
-      console.log('🔄 _layout: Still loading...', { isLoading, userRoleLoading });
-      return;
-    }
+    if (loading || userRoleLoading) return;
 
-    const inAuthGroup = segments[0] === AUTH_GROUP;
-    const inProtectedGroup = segments[0] === PROTECTED_GROUP;
-    const inStudentRegistration = segments[0] === 'student-registration';
-    const inStudentSelection = segments[0] === 'student-selection';
+    const inAuthGroup = segments[0] === '(auth)';
+    const inProtectedGroup = segments[0] === '(tabs)';
 
-    console.log('🧭 _layout: Navigation check', {
-      session: !!session,
-      isFirstTimeUser,
-      needsStudentSelection,
-      segments: segments[0],
-      inAuthGroup,
-      inProtectedGroup,
-      inStudentRegistration,
-      inStudentSelection
-    });
-
-    if (session) {
-      if (isFirstTimeUser && !inStudentRegistration) {
-        console.log('➡️ _layout: Redirecting to student registration (first time user)');
-        router.replace('/student-registration');
-      } else if (needsStudentSelection && !inStudentSelection) {
-        console.log('➡️ _layout: Redirecting to student selection (multiple students)');
-        router.replace('/student-selection');
-      } else if (!isFirstTimeUser && !needsStudentSelection && inAuthGroup) {
-        console.log('➡️ _layout: Redirecting to main app (existing user in auth group)');
-        router.replace('/(tabs)');
-      } else if (isFirstTimeUser && inAuthGroup) {
-        console.log('➡️ _layout: Redirecting to student registration (first time user in auth group)');
-        router.replace('/student-registration');
-      } else {
-        console.log('✅ _layout: No redirect needed');
-      }
-    } else if (!session && (inProtectedGroup || inStudentRegistration || inStudentSelection)) {
-      console.log('➡️ _layout: Redirecting to login (no session)');
+    if (!user && !inAuthGroup) {
+      // 未認証ユーザーを認証画面にリダイレクト
       router.replace('/login');
+    } else if (user && userRole && inAuthGroup) {
+      // 認証済みユーザーをメイン画面にリダイレクト
+      router.replace('/(tabs)');
     }
-  }, [session, segments, isLoading, isFirstTimeUser, userRoleLoading, needsStudentSelection]);
+  }, [user, loading, userRole, userRoleLoading, segments]);
 
-  if (isLoading || userRoleLoading) {
+  if (loading || userRoleLoading) {
     return (
       <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
         <ActivityIndicator size="large" />
@@ -68,22 +40,19 @@ function RootLayoutNav() {
 
   return (
     <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      <Stack.Screen name="index" options={{ headerShown: false }} />
       <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-      <Stack.Screen name="notifications/index" options={{ headerShown: false }} />
-      <Stack.Screen name="notifications/[notificationId]" options={{ headerShown: false }} />
-      <Stack.Screen name="chat/[chatGroupId]" options={{ headerShown: false }} />
-      <Stack.Screen name="chat/student" options={{ headerShown: false }} />
-      <Stack.Screen name="student-registration" options={{ headerShown: false }} />
-      <Stack.Screen name="student-selection" options={{ headerShown: false }} />
+      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
     </Stack>
   );
 }
 
 export default function RootLayout() {
   return (
-    <AuthProvider>
-      <RootLayoutNav />
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <RootLayoutNav />
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }

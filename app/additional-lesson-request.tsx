@@ -15,6 +15,7 @@ import { useRouter } from 'expo-router';
 import { format, addDays, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import DateTimePicker from '@react-native-community/datetimepicker';
+import { Calendar, ClipboardList } from 'lucide-react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
@@ -35,18 +36,19 @@ export default function AdditionalLessonRequestScreen() {
     requested_start_time: '16:00',
     requested_end_time: '17:00',
     teacher_id: '',
+    lesson_type: '通常授業', // 授業タイプを追加
     notes: '',
   });
 
   const [teachers, setTeachers] = useState<TeacherOption[]>([]);
   const [availableSlots, setAvailableSlots] = useState<AvailableTimeSlot[]>([]);
   const [timeSlotOptions] = useState<TimeSlotOption[]>([
-    { label: '15:00 - 16:00', value: '15:00-16:00', isPopular: false, isAvailable: true },
-    { label: '16:00 - 17:00', value: '16:00-17:00', isPopular: true, isAvailable: true },
-    { label: '17:00 - 18:00', value: '17:00-18:00', isPopular: true, isAvailable: true },
-    { label: '18:00 - 19:00', value: '18:00-19:00', isPopular: true, isAvailable: true },
-    { label: '19:00 - 20:00', value: '19:00-20:00', isPopular: false, isAvailable: true },
-    { label: '20:00 - 21:00', value: '20:00-21:00', isPopular: false, isAvailable: true },
+    { label: '15:00 - 16:00', value: '15:00-16:00', isAvailable: true },
+    { label: '16:00 - 17:00', value: '16:00-17:00', isAvailable: true },
+    { label: '17:00 - 18:00', value: '17:00-18:00', isAvailable: true },
+    { label: '18:00 - 19:00', value: '18:00-19:00', isAvailable: true },
+    { label: '19:00 - 20:00', value: '19:00-20:00', isAvailable: true },
+    { label: '20:00 - 21:00', value: '20:00-21:00', isAvailable: true },
   ]);
 
   const [loading, setLoading] = useState(true);
@@ -99,7 +101,7 @@ export default function AdditionalLessonRequestScreen() {
       }
 
     } catch (err) {
-      console.error('講師データ取得エラー:', err);
+      // エラーハンドリング: 講師データ取得エラー
       setError({
         type: 'network',
         message: '講師情報の取得に失敗しました',
@@ -266,7 +268,7 @@ export default function AdditionalLessonRequestScreen() {
       );
 
     } catch (err) {
-      console.error('追加授業申請エラー:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       setError({
         type: 'network',
         message: '追加授業申請の送信に失敗しました',
@@ -359,7 +361,9 @@ export default function AdditionalLessonRequestScreen() {
             <Text style={styles.dateButtonText}>
               {format(parseISO(formData.requested_date), 'yyyy年M月d日(E)', { locale: ja })}
             </Text>
-            <Text style={styles.dateButtonIcon}>📅</Text>
+            <View style={styles.dateButtonIconContainer}>
+              <Calendar size={20} color="#3B82F6" />
+            </View>
           </TouchableOpacity>
         </View>
 
@@ -389,9 +393,6 @@ export default function AdditionalLessonRequestScreen() {
                   ]}>
                     {slot.label}
                   </Text>
-                  {slot.isPopular && (
-                    <Text style={styles.popularBadge}>人気</Text>
-                  )}
                 </TouchableOpacity>
               );
             })}
@@ -429,6 +430,50 @@ export default function AdditionalLessonRequestScreen() {
                 />
               </View>
             </View>
+          </View>
+        </View>
+
+        {/* 授業タイプ選択 */}
+        <View style={styles.formSection}>
+          <Text style={styles.formLabel}>
+            授業タイプ <Text style={styles.required}>*</Text>
+          </Text>
+          <View style={styles.lessonTypeOptions}>
+            <TouchableOpacity
+              style={[
+                styles.lessonTypeOption,
+                formData.lesson_type === '通常授業' && styles.lessonTypeOptionSelected,
+              ]}
+              onPress={() => setFormData(prev => ({ ...prev, lesson_type: '通常授業' }))}
+            >
+              <Text style={[
+                styles.lessonTypeText,
+                formData.lesson_type === '通常授業' && styles.lessonTypeTextSelected,
+              ]}>
+                通常授業
+              </Text>
+              <Text style={styles.lessonTypeDescription}>
+                教科指導・問題演習
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity
+              style={[
+                styles.lessonTypeOption,
+                formData.lesson_type === '固定面談' && styles.lessonTypeOptionSelected,
+              ]}
+              onPress={() => setFormData(prev => ({ ...prev, lesson_type: '固定面談' }))}
+            >
+              <Text style={[
+                styles.lessonTypeText,
+                formData.lesson_type === '固定面談' && styles.lessonTypeTextSelected,
+              ]}>
+                面談
+              </Text>
+              <Text style={styles.lessonTypeDescription}>
+                学習相談・進路相談
+              </Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -524,7 +569,10 @@ export default function AdditionalLessonRequestScreen() {
 
         {/* 注意事項 */}
         <View style={styles.noticeContainer}>
-          <Text style={styles.noticeTitle}>📋 注意事項</Text>
+          <View style={styles.noticeTitleContainer}>
+            <ClipboardList size={16} color="#1E40AF" />
+            <Text style={styles.noticeTitle}>注意事項</Text>
+          </View>
           <Text style={styles.noticeText}>
             • 申請は明日以降1ヶ月以内の日程で受け付けます{'\n'}
             • 承認後にカレンダーに授業が追加されます{'\n'}
@@ -648,8 +696,8 @@ const styles = StyleSheet.create({
     color: '#111827',
     fontWeight: '500',
   },
-  dateButtonIcon: {
-    fontSize: 20,
+  dateButtonIconContainer: {
+    marginLeft: 8,
   },
   timeSlotGrid: {
     flexDirection: 'row',
@@ -685,18 +733,6 @@ const styles = StyleSheet.create({
   },
   timeSlotButtonTextDisabled: {
     color: '#9CA3AF',
-  },
-  popularBadge: {
-    position: 'absolute',
-    top: -6,
-    right: -6,
-    backgroundColor: '#F59E0B',
-    color: '#FFFFFF',
-    fontSize: 10,
-    fontWeight: 'bold',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
   },
   customTimeContainer: {
     marginTop: 16,
@@ -734,6 +770,36 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: '#6B7280',
     fontWeight: '500',
+  },
+  lessonTypeOptions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  lessonTypeOption: {
+    flex: 1,
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 16,
+    alignItems: 'center',
+  },
+  lessonTypeOptionSelected: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EBF8FF',
+  },
+  lessonTypeText: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#374151',
+    marginBottom: 4,
+  },
+  lessonTypeTextSelected: {
+    color: '#1D4ED8',
+  },
+  lessonTypeDescription: {
+    fontSize: 12,
+    color: '#6B7280',
+    textAlign: 'center',
   },
   teacherList: {
     gap: 8,
@@ -827,11 +893,16 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 16,
   },
+  noticeTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   noticeTitle: {
     fontSize: 16,
     fontWeight: '600',
     color: '#1E40AF',
-    marginBottom: 8,
+    marginLeft: 6,
   },
   noticeText: {
     fontSize: 14,

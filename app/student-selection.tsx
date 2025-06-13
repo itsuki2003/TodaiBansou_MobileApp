@@ -10,11 +10,12 @@ import {
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
 import { BookOpen, User } from 'lucide-react-native';
+import type { Student } from '@/types/database.types';
 
 export default function StudentSelectionScreen() {
   const { students, selectStudent } = useAuth();
 
-  const handleStudentSelect = async (student: any) => {
+  const handleStudentSelect = async (student: Student) => {
     await selectStudent(student);
     router.replace('/(tabs)');
   };
@@ -104,7 +105,7 @@ const styles = StyleSheet.create({
     width: '100%',
     maxWidth: 400,
     alignSelf: 'center',
-    gap: 16,
+    marginBottom: 16,
   },
   studentCard: {
     flexDirection: 'row',
@@ -122,6 +123,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 3,
     elevation: 2,
+    marginBottom: 16,
   },
   studentIconWrapper: {
     width: 60,

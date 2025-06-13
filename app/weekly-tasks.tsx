@@ -168,7 +168,7 @@ export default function WeeklyTasksScreen() {
       });
 
     } catch (err) {
-      console.error('週間データ取得エラー:', err);
+      // エラーハンドリング: 週間データ取得エラー
       setError({
         type: 'data',
         message: 'やることリストの取得に失敗しました',
@@ -271,7 +271,7 @@ export default function WeeklyTasksScreen() {
       });
 
     } catch (err) {
-      console.error('タスク更新エラー:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'タスクの更新に失敗しました');
     }
   }, []);

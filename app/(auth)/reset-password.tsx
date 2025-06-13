@@ -12,14 +12,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { router } from 'expo-router';
-import { supabase } from '@/lib/supabaseClient';
+import { useAuth } from '@/contexts/AuthContext';
 import { Mail, BookOpen, ArrowLeft } from 'lucide-react-native';
-import Constants from 'expo-constants';
 import * as Linking from 'expo-linking';
 
 export default function ResetPasswordScreen() {
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
+  const { resetPassword } = useAuth();
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -34,17 +34,7 @@ export default function ResetPasswordScreen() {
 
     try {
       setLoading(true);
-      
-      // 動的にリダイレクトURLを生成
-      const redirectUrl = Linking.createURL('(auth)/confirm');
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: redirectUrl,
-      });
-
-      if (error) {
-        throw error;
-      }
+      await resetPassword(email);
 
       Alert.alert(
         'パスワードリセット',
@@ -57,7 +47,7 @@ export default function ResetPasswordScreen() {
         ]
       );
     } catch (error: any) {
-      console.error('Password reset error:', error);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'パスワードリセットメールの送信に失敗しました。しばらく時間をおいて再度お試しください。');
     } finally {
       setLoading(false);

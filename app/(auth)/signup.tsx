@@ -12,7 +12,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Link, router } from 'expo-router';
-import { supabase } from '../../lib/supabaseClient';
+import { useAuth } from '../../contexts/AuthContext';
 import { Mail, Lock, BookOpen, ArrowLeft } from 'lucide-react-native';
 
 export default function SignUpScreen() {
@@ -20,8 +20,14 @@ export default function SignUpScreen() {
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const { signUp } = useAuth();
 
   const handleSignUp = async () => {
+    if (!email || !password || !confirmPassword) {
+      Alert.alert('エラー', 'すべての項目を入力してください。');
+      return;
+    }
+
     if (password !== confirmPassword) {
       Alert.alert('エラー', 'パスワードが一致しません。');
       return;
@@ -34,16 +40,8 @@ export default function SignUpScreen() {
 
     try {
       setLoading(true);
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      });
-
-      if (error) {
-        throw error;
-      }
-
-      console.log('SignUp Response:', data);
+      await signUp(email, password);
+      
       Alert.alert(
         '登録完了',
         '登録確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。',
@@ -55,7 +53,7 @@ export default function SignUpScreen() {
         ]
       );
     } catch (error: any) {
-      console.error('Signup error:', error);
+      // エラーはAlertで表示するため、console.errorは削除
       let errorMessage = 'アカウント作成に失敗しました。しばらく時間をおいて再度お試しください。';
       
       // 特定のエラーの場合のみ、具体的なメッセージを表示

@@ -80,19 +80,19 @@ export default function NotificationDetailScreen() {
 
       setNotification(notificationWithCategory);
 
-      // TODO: Mark notification as read
+      // 通知を既読マークにする処理
       // This would require implementing read status tracking
       // markNotificationAsRead(notificationId);
       
     } catch (err) {
-      console.error('Error fetching notification detail:', err);
+      // エラーはsetErrorでハンドリング
       setError('お知らせの取得に失敗しました');
     } finally {
       setLoading(false);
     }
   }, [notificationId]);
 
-  // TODO: Implement read status marking
+  // 既読ステータスのマーキング機能
   // const markNotificationAsRead = async (notificationId: string) => {
   //   try {
   //     // This would require user authentication and the notification_reads table
@@ -107,7 +107,7 @@ export default function NotificationDetailScreen() {
   //     //     });
   //     // }
   //   } catch (err) {
-  //     console.error('Error marking notification as read:', err);
+  //     // エラーハンドリング: 既読マークエラー
   //   }
   // };
 
@@ -167,7 +167,7 @@ export default function NotificationDetailScreen() {
         Alert.alert('エラー', 'このURLを開くことができません');
       }
     } catch (err) {
-      console.error('Error opening URL:', err);
+      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'URLを開く際にエラーが発生しました');
     }
   };

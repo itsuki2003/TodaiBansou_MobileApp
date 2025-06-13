@@ -68,7 +68,7 @@ export default function ChatGroupList() {
 
       setChatGroups(data || []);
     } catch (err) {
-      console.error('Error fetching chat groups:', err);
+      // エラーはsetErrorでハンドリング
       setError('チャットグループの取得に失敗しました');
     } finally {
       setLoading(false);

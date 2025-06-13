@@ -29,7 +29,8 @@ type Assignment = {
   id: string;
   student_id: string;
   teacher_id: string;
-  role: 'interview' | 'class';
+  role: '面談担当（リスト編集可）' | '授業担当（コメントのみ）';
+  teachers: Teacher;
 };
 
 type ProfileData = {
@@ -66,12 +67,20 @@ export default function ProfileScreen() {
         throw new Error('生徒が選択されていません');
       }
 
-      // 選択された生徒の情報を使用
+      // 生徒の詳細情報を取得
+      const { data: studentData, error: studentError } = await supabase
+        .from('students')
+        .select('id, full_name, grade, school_attended')
+        .eq('id', selectedStudent.id)
+        .single();
+
+      if (studentError) throw studentError;
+
       const studentInfo = {
-        id: selectedStudent.id,
-        full_name: selectedStudent.full_name,
-        grade: selectedStudent.grade || '',
-        school_attended: '', // 必要に応じて追加のデータを取得
+        id: studentData.id,
+        full_name: studentData.full_name,
+        grade: studentData.grade || '',
+        school_attended: studentData.school_attended || '未設定',
       };
 
       // 担当講師情報を取得
@@ -83,8 +92,8 @@ export default function ProfileScreen() {
       if (assignmentsError) throw assignmentsError;
 
       // 面談担当と授業担当を分離
-      const interviewTeacher = assignments?.find((a: Assignment) => a.role === 'interview')?.teachers;
-      const classTeacher = assignments?.find((a: Assignment) => a.role === 'class')?.teachers;
+      const interviewTeacher = assignments?.find((a: Assignment) => a.role === '面談担当（リスト編集可）')?.teachers;
+      const classTeacher = assignments?.find((a: Assignment) => a.role === '授業担当（コメントのみ）')?.teachers;
 
       setProfileData({
         student: studentInfo,
