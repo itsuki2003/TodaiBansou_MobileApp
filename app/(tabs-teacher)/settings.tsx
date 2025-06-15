@@ -119,12 +119,7 @@ export default function TeacherSettingsScreen() {
   };
 
   const handleScheduleSettings = () => {
-    showNotification({
-      type: 'info',
-      title: '準備中',
-      message: 'スケジュール設定機能は今後のアップデートで実装予定です',
-      autoHide: true,
-    });
+    router.push('/(tabs-teacher)/teacher-schedule-settings');
   };
 
   const handleTerms = () => {

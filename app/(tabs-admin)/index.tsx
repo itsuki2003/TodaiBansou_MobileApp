@@ -363,7 +363,7 @@ export default function AdminHomeScreen() {
       subtitle: '生徒・講師の担当設定',
       icon: Users,
       color: '#8B5CF6',
-      onPress: () => router.push('/admin-assignment-management'),
+      onPress: () => router.push('/(tabs-admin)/admin-assignment-management'),
     },
     {
       title: 'スケジュール管理',
@@ -377,7 +377,7 @@ export default function AdminHomeScreen() {
       subtitle: 'お知らせの作成・配信',
       icon: Bell,
       color: '#EF4444',
-      onPress: () => router.push('/admin-notifications'),
+      onPress: () => router.push('/(tabs-admin)/admin-notifications'),
     },
     {
       title: 'システム設定',

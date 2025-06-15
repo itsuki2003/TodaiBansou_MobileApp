@@ -36,10 +36,10 @@ import {
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
-import { AdminGuard } from '../components/common/RoleGuard';
-import type { Database } from '../types/database.types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
+import { AdminGuard } from '@/components/common/RoleGuard';
+import type { Database } from '@/types/database.types';
 
 type Teacher = Database['public']['Tables']['teachers']['Row'];
 type Assignment = Database['public']['Tables']['assignments']['Row'];
@@ -181,7 +181,7 @@ export default function AdminTeacherDetailScreen() {
 
   const handleStudentPress = (studentId: string) => {
     router.push({
-      pathname: '/admin-student-detail',
+      pathname: '/(tabs-admin)/admin-student-detail',
       params: { studentId }
     });
   };

@@ -33,10 +33,10 @@ import {
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
-import { AdminGuard } from '../components/common/RoleGuard';
-import type { Database } from '../types/database.types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
+import { AdminGuard } from '@/components/common/RoleGuard';
+import type { Database } from '@/types/database.types';
 
 type Assignment = Database['public']['Tables']['assignments']['Row'];
 type Student = Database['public']['Tables']['students']['Row'];

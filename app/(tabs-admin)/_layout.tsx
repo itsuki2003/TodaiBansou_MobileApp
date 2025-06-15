@@ -93,6 +93,76 @@ export default function AdminTabLayout() {
           title: 'プライバシーポリシー',
         }}
       />
+      <Tabs.Screen
+        name="admin-profile"
+        options={{
+          href: null, // Hide from tab bar
+          title: '管理者プロフィール',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-teacher-applications"
+        options={{
+          href: null, // Hide from tab bar
+          title: '講師申請管理',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-student-form"
+        options={{
+          href: null, // Hide from tab bar
+          title: '生徒登録',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-teacher-detail"
+        options={{
+          href: null, // Hide from tab bar
+          title: '講師詳細',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-student-detail"
+        options={{
+          href: null, // Hide from tab bar
+          title: '生徒詳細',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-assignment-management"
+        options={{
+          href: null, // Hide from tab bar
+          title: '担当管理',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-notification-categories"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'お知らせカテゴリ',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-notifications"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'お知らせ管理',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-data-export"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'データエクスポート',
+        }}
+      />
+      <Tabs.Screen
+        name="admin-backup"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'システムバックアップ',
+        }}
+      />
     </Tabs>
   );
 }

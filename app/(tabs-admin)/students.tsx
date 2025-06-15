@@ -203,7 +203,7 @@ export default function AdminStudentsScreen() {
   };
 
   const handleAddStudent = () => {
-    router.push('/admin-student-form');
+    router.push('/(tabs-admin)/admin-student-form');
   };
 
   const getStatusColor = (status: string) => {

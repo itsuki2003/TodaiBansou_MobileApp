@@ -100,6 +100,13 @@ export default function TeacherTabLayout() {
           title: 'プライバシーポリシー',
         }}
       />
+      <Tabs.Screen
+        name="teacher-schedule-settings"
+        options={{
+          href: null, // タブバーに表示しない
+          title: 'スケジュール設定',
+        }}
+      />
     </Tabs>
   );
 }

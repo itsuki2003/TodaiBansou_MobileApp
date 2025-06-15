@@ -124,7 +124,7 @@ export default function SettingsScreen() {
   
   const handleProfile = () => {
     // Navigate to profile screen
-    router.push('/profile');
+    router.push('/(tabs)/profile');
   };
 
   const handleStudentSwitch = () => {

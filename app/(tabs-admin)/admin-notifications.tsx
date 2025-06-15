@@ -32,10 +32,10 @@ import {
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 
-import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
-import { AdminGuard } from '../components/common/RoleGuard';
-import type { Database } from '../types/database.types';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/lib/supabaseClient';
+import { AdminGuard } from '@/components/common/RoleGuard';
+import type { Database } from '@/types/database.types';
 
 type Notification = Database['public']['Tables']['notifications']['Row'];
 type NotificationCategory = Database['public']['Tables']['notification_categories']['Row'];
@@ -442,7 +442,7 @@ export default function AdminNotificationsScreen() {
           </TouchableOpacity>
           <Text style={styles.headerTitle}>お知らせ管理</Text>
           <View style={styles.headerActions}>
-            <TouchableOpacity onPress={() => router.push('/admin-notification-categories')}>
+            <TouchableOpacity onPress={() => router.push('/(tabs-admin)/admin-notification-categories')}>
               <Tag size={24} color="#374151" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => {

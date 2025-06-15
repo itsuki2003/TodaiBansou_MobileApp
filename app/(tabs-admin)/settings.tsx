@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
   Switch,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { 
   User, 
   FileText, 
@@ -53,6 +54,37 @@ export default function AdminSettingsScreen() {
     debugMode: false,
   });
 
+  // AsyncStorageキー
+  const SYSTEM_SETTINGS_KEY = 'admin_system_settings';
+
+  // システム設定を読み込む
+  const loadSystemSettings = async () => {
+    try {
+      const savedSettings = await AsyncStorage.getItem(SYSTEM_SETTINGS_KEY);
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setSystemSettings(prev => ({ ...prev, ...parsed }));
+      }
+    } catch (error) {
+      console.error('Error loading system settings:', error);
+    }
+  };
+
+  // システム設定を保存する
+  const saveSystemSettings = async (newSettings: typeof systemSettings) => {
+    try {
+      await AsyncStorage.setItem(SYSTEM_SETTINGS_KEY, JSON.stringify(newSettings));
+    } catch (error) {
+      console.error('Error saving system settings:', error);
+      showNotification({
+        type: 'error',
+        title: 'エラー',
+        message: 'システム設定の保存に失敗しました',
+        autoHide: true,
+      });
+    }
+  };
+
   // 管理者情報と統計データを取得
   useEffect(() => {
     const fetchAdminData = async () => {
@@ -60,6 +92,9 @@ export default function AdminSettingsScreen() {
 
       try {
         setLoading(true);
+
+        // システム設定を読み込み
+        await loadSystemSettings();
 
         // 管理者情報を取得
         const { data: adminData, error: adminError } = await supabase
@@ -103,53 +138,16 @@ export default function AdminSettingsScreen() {
   }, [user, userRole, showNotification]);
 
   const handleProfile = () => {
-    router.push('/admin-profile' as any);
+    router.push('/(tabs-admin)/admin-profile' as any);
   };
 
-  const handleUserManagement = () => {
-    router.push('/(tabs-admin)');
-  };
 
   const handleDataExport = () => {
-    Alert.alert(
-      'データエクスポート',
-      'システムデータをエクスポートしますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: 'エクスポート',
-          onPress: () => {
-            showNotification({
-              type: 'info',
-              title: 'エクスポート開始',
-              message: 'データのエクスポートを開始しました',
-              autoHide: true,
-            });
-          },
-        },
-      ]
-    );
+    router.push('/(tabs-admin)/admin-data-export');
   };
 
   const handleBackup = () => {
-    Alert.alert(
-      'システムバックアップ',
-      '手動でバックアップを実行しますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        {
-          text: 'バックアップ実行',
-          onPress: () => {
-            showNotification({
-              type: 'success',
-              title: 'バックアップ完了',
-              message: 'システムバックアップが正常に完了しました',
-              autoHide: true,
-            });
-          },
-        },
-      ]
-    );
+    router.push('/(tabs-admin)/admin-backup');
   };
 
   const handleTerms = () => {
@@ -160,18 +158,34 @@ export default function AdminSettingsScreen() {
     router.push('/(tabs-admin)/privacy-policy');
   };
 
-  const handleSystemSettingToggle = (setting: keyof typeof systemSettings) => {
-    setSystemSettings(prev => ({
-      ...prev,
-      [setting]: !prev[setting]
-    }));
+  const handleSystemSettingToggle = async (setting: keyof typeof systemSettings) => {
+    const newSettings = {
+      ...systemSettings,
+      [setting]: !systemSettings[setting]
+    };
+    
+    setSystemSettings(newSettings);
+    
+    // AsyncStorageに保存
+    await saveSystemSettings(newSettings);
     
     showNotification({
       type: 'success',
       title: '設定を更新しました',
-      message: 'システム設定が変更されました',
+      message: `${getSettingDisplayName(setting)}の設定が変更されました`,
       autoHide: true,
     });
+  };
+
+  // 設定項目の表示名を取得
+  const getSettingDisplayName = (setting: keyof typeof systemSettings) => {
+    switch (setting) {
+      case 'maintenanceMode': return 'メンテナンスモード';
+      case 'autoBackup': return '自動バックアップ';
+      case 'emailNotifications': return 'メール通知';
+      case 'debugMode': return 'デバッグモード';
+      default: return '設定';
+    }
   };
 
   const handleLogout = () => {
@@ -289,19 +303,6 @@ export default function AdminSettingsScreen() {
               <ChevronRight size={18} color="#94A3B8" />
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={handleUserManagement}
-            >
-              <View style={styles.menuIconContainer}>
-                <Users size={20} color="#DC2626" />
-              </View>
-              <View style={styles.menuItemContent}>
-                <Text style={styles.menuText}>ユーザー管理</Text>
-                <Text style={styles.menuSubtext}>生徒・講師の管理</Text>
-              </View>
-              <ChevronRight size={18} color="#94A3B8" />
-            </TouchableOpacity>
 
             <TouchableOpacity 
               style={styles.menuItem}

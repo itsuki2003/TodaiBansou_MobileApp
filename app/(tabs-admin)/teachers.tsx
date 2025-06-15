@@ -11,6 +11,8 @@ import {
   TextInput,
   Modal,
   Alert,
+  Linking,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import {
@@ -287,32 +289,64 @@ export default function AdminTeachersScreen() {
       </View>
 
       <View style={styles.teacherStats}>
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>担当生徒</Text>
-          <Text style={styles.statValue}>
-            {item.activeAssignments > 0 
-              ? `${item.activeAssignments}名`
-              : '未割当'
-            }
-          </Text>
-        </View>
-        
-        <View style={styles.statItem}>
-          <Text style={styles.statLabel}>連絡先</Text>
-          <View style={styles.contactInfo}>
-            <Mail size={12} color="#6B7280" />
-            <Text style={styles.statValue} numberOfLines={1}>{item.email}</Text>
+        <View style={styles.statItemRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statLabel}>担当生徒数</Text>
+            <Text style={styles.statValue}>
+              {item.activeAssignments > 0 
+                ? `${item.activeAssignments}名`
+                : '未割当'
+              }
+            </Text>
           </View>
+          {item.activeAssignments > 0 && (
+            <View style={styles.assignedStudentsList}>
+              <Text style={styles.assignedStudentsLabel}>担当:</Text>
+              <Text style={styles.assignedStudentsText} numberOfLines={1}>
+                {item.assignedStudents.map(a => a.student.full_name).join('、')}
+              </Text>
+            </View>
+          )}
         </View>
+      </View>
+
+      <View style={styles.contactSection}>
+        <TouchableOpacity 
+          style={styles.contactItem}
+          onPress={() => Linking.openURL(`mailto:${item.email}`)}
+        >
+          <View style={styles.contactIconContainer}>
+            <Mail size={16} color="#3B82F6" />
+          </View>
+          <View style={styles.contactTextContainer}>
+            <Text style={styles.contactLabel}>メールアドレス</Text>
+            <Text style={[styles.contactValue, styles.contactLink]} numberOfLines={1} ellipsizeMode="middle">
+              {item.email}
+            </Text>
+          </View>
+        </TouchableOpacity>
         
         {item.phone_number && (
-          <View style={styles.statItem}>
-            <Text style={styles.statLabel}>電話</Text>
-            <View style={styles.contactInfo}>
-              <Phone size={12} color="#6B7280" />
-              <Text style={styles.statValue}>{item.phone_number}</Text>
+          <TouchableOpacity 
+            style={styles.contactItem}
+            onPress={() => {
+              const phoneNumber = item.phone_number.replace(/[^0-9]/g, '');
+              const url = Platform.OS === 'ios' 
+                ? `tel:${phoneNumber}` 
+                : `tel:${phoneNumber}`;
+              Linking.openURL(url);
+            }}
+          >
+            <View style={styles.contactIconContainer}>
+              <Phone size={16} color="#3B82F6" />
             </View>
-          </View>
+            <View style={styles.contactTextContainer}>
+              <Text style={styles.contactLabel}>電話番号</Text>
+              <Text style={[styles.contactValue, styles.contactLink]}>
+                {item.phone_number}
+              </Text>
+            </View>
+          </TouchableOpacity>
         )}
       </View>
     </TouchableOpacity>
@@ -367,10 +401,10 @@ export default function AdminTeachersScreen() {
           title="講師管理"
           rightElement={
             <View style={styles.headerActions}>
-              <TouchableOpacity onPress={() => router.push('/admin-assignment-management')}>
+              <TouchableOpacity onPress={() => router.push('/(tabs-admin)/admin-assignment-management')}>
                 <Users size={24} color="#374151" />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => router.push('/admin-teacher-applications' as any)}>
+              <TouchableOpacity onPress={() => router.push('/(tabs-admin)/admin-teacher-applications' as any)}>
                 <Plus size={24} color="#374151" />
               </TouchableOpacity>
             </View>
@@ -697,14 +731,35 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   teacherStats: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: '#F3F4F6',
     paddingTop: 12,
-    gap: 16,
+    marginBottom: 8,
+  },
+  statItemRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   statItem: {
+    minWidth: 80,
+  },
+  assignedStudentsList: {
     flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 16,
+  },
+  assignedStudentsLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginRight: 4,
+  },
+  assignedStudentsText: {
+    flex: 1,
+    fontSize: 12,
+    color: '#6B7280',
+    fontStyle: 'italic',
   },
   statLabel: {
     fontSize: 12,
@@ -716,10 +771,42 @@ const styles = StyleSheet.create({
     color: '#374151',
     fontWeight: '500',
   },
-  contactInfo: {
+  contactSection: {
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
+    paddingTop: 12,
+  },
+  contactItem: {
     flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 12,
+  },
+  contactIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
     alignItems: 'center',
-    gap: 4,
+    marginRight: 12,
+  },
+  contactTextContainer: {
+    flex: 1,
+  },
+  contactLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    marginBottom: 2,
+    fontWeight: '500',
+  },
+  contactValue: {
+    fontSize: 15,
+    color: '#111827',
+    fontWeight: '400',
+  },
+  contactLink: {
+    color: '#3B82F6',
+    textDecorationLine: 'underline',
   },
   modalContainer: {
     flex: 1,
