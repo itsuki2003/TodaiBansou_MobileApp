@@ -1,6 +1,6 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Chrome as Home, Calendar, MessageCircle, Settings } from 'lucide-react-native';
+import { House as Home, Calendar, MessageCircle, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
@@ -58,6 +58,20 @@ export default function TabLayout() {
         name="profile"
         options={{
           href: null, // Hide from tab bar
+        }}
+      />
+      <Tabs.Screen
+        name="terms-of-service"
+        options={{
+          href: null, // Hide from tab bar
+          title: '利用規約',
+        }}
+      />
+      <Tabs.Screen
+        name="privacy-policy"
+        options={{
+          href: null, // Hide from tab bar
+          title: 'プライバシーポリシー',
         }}
       />
     </Tabs>

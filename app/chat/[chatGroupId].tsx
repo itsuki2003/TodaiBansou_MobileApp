@@ -51,7 +51,7 @@ export default function ChatGroupScreen() {
 
         const studentIds = assignments.map(a => a.student_id);
         query = query.in('student_id', studentIds);
-      } else if (userRole === 'student') {
+      } else if (userRole === 'parent') {
         // 生徒の場合、自分のチャットグループかどうかを確認
         query = query.eq('student_id', user.id);
       }

@@ -5,6 +5,7 @@ import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import ja from 'date-fns/locale/ja';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import './styles/calendar.css';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import Header from '@/components/ui/Header';
@@ -14,12 +15,15 @@ import PageHeader from '@/components/ui/PageHeader';
 import { LessonSlotWithDetails, CalendarEvent, Student, ModalState } from '@/types/schedule';
 import StudentSelector from './components/StudentSelector';
 import CalendarView from './components/CalendarView';
+import CalendarToolbar from './components/CalendarToolbar';
+import LessonLegend from './components/LessonLegend';
 import LessonSlotModal from './components/LessonSlotModal';
 import AddLessonModal from './components/AddLessonModal';
 import { useScheduleData } from './hooks/useScheduleData';
 import { useLessonActions } from './hooks/useLessonActions';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faCalendarDays, faInfoCircle } from '@fortawesome/free-solid-svg-icons';
+import { getEventClassName } from './constants/colors';
 
 // react-big-calendarの日本語ローカライゼーション
 const locales = {
@@ -71,39 +75,33 @@ export default function SchedulePage() {
 
   // LessonSlotをCalendarEventに変換
   const calendarEvents: CalendarEvent[] = lessonSlots.map(slot => {
-    const startDateTime = new Date(`${slot.slot_date}T${slot.start_time}`);
-    const endDateTime = new Date(`${slot.slot_date}T${slot.end_time}`);
+    // タイムゾーンを考慮した日時作成
+    const [year, month, day] = slot.slot_date.split('-').map(Number);
+    const [startHour, startMinute] = slot.start_time.split(':').map(Number);
+    const [endHour, endMinute] = slot.end_time.split(':').map(Number);
+    
+    const startDateTime = new Date(year, month - 1, day, startHour, startMinute);
+    const endDateTime = new Date(year, month - 1, day, endHour, endMinute);
 
     const event = {
       id: slot.id,
       title: `${slot.student_name} - ${slot.slot_type}`,
       start: startDateTime,
       end: endDateTime,
-      resource: slot,
-      className: getEventClassName(slot)
+      resource: slot
     };
 
-    console.log('📅 イベント変換:', { slot, event });
+    console.log('📅 イベント変換:', {
+      original: slot,
+      converted: event,
+      startDateTime: startDateTime.toString(),
+      endDateTime: endDateTime.toString()
+    });
+
     return event;
   });
 
   console.log('📅 カレンダーイベント一覧:', calendarEvents);
-
-  // 授業種別・ステータスに応じたCSSクラス
-  function getEventClassName(slot: LessonSlotWithDetails): string {
-    const baseClass = 'lesson-event';
-    
-    if (slot.status === '欠席') return `${baseClass} lesson-absent`;
-    if (slot.status === '振替済み（振替元）') return `${baseClass} lesson-rescheduled`;
-    
-    switch (slot.slot_type) {
-      case '通常授業': return `${baseClass} lesson-regular`;
-      case '固定面談': return `${baseClass} lesson-consultation`;
-      case '振替授業': return `${baseClass} lesson-makeup`;
-      case '追加授業': return `${baseClass} lesson-additional`;
-      default: return baseClass;
-    }
-  }
 
   // カレンダーイベントクリック
   const handleEventClick = (event: CalendarEvent) => {
@@ -222,98 +220,75 @@ export default function SchedulePage() {
           </div>
         </div>
 
-        {/* ヘルプテキストと手動追加ボタン */}
-        {selectedStudent && (
-          <div className="bg-gradient-to-r from-success-50 to-success-100 border border-success-200 rounded-xl p-6 mb-6 shadow-sm">
-            <div className="flex items-start justify-between">
-              <div className="flex items-start space-x-3">
-                <FontAwesomeIcon icon={faInfoCircle} className="w-5 h-5 text-success-600 mt-1 flex-shrink-0" />
-                <div>
-                  <h3 className="font-semibold text-success-900 mb-3">操作方法</h3>
-                  <ul className="text-sm text-success-800 space-y-2">
-                    <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                      <span>授業をクリックすると詳細を表示します</span>
-                    </li>
-                    <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                      <span>下のボタンから新しい授業を追加できます</span>
-                    </li>
-                    <li className="flex items-start space-x-2">
-                      <span className="w-1.5 h-1.5 bg-success-600 rounded-full mt-2 flex-shrink-0"></span>
-                      <span>授業を右クリックするとコンテキストメニューが表示されます</span>
-                    </li>
-                  </ul>
-                </div>
-              </div>
-              <div className="ml-6">
-                <button
-                  onClick={() => {
-                    console.log('📅 手動で新規授業追加ボタンクリック');
-                    const today = new Date();
-                    const startTime = new Date(today);
-                    startTime.setHours(16, 0, 0, 0);
-                    const endTime = new Date(today);
-                    endTime.setHours(17, 0, 0, 0);
-                    
-                    setModalState({
-                      isOpen: true,
-                      mode: 'create',
-                      selectedDate: today
-                    });
-                  }}
-                  className="px-6 py-3 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors font-medium shadow-lg hover:shadow-xl"
-                >
-                  ＋ 新規授業追加
-                </button>
-              </div>
-            </div>
+
+        {/* カレンダーツールバー */}
+        <CalendarToolbar
+          currentView={currentView}
+          currentDate={currentDate}
+          onViewChange={setCurrentView}
+          onNavigate={(action) => {
+            const newDate = new Date(currentDate);
+            switch (action) {
+              case 'PREV':
+                if (currentView === 'month') {
+                  newDate.setMonth(newDate.getMonth() - 1);
+                } else if (currentView === 'week') {
+                  newDate.setDate(newDate.getDate() - 7);
+                } else {
+                  newDate.setDate(newDate.getDate() - 1);
+                }
+                break;
+              case 'NEXT':
+                if (currentView === 'month') {
+                  newDate.setMonth(newDate.getMonth() + 1);
+                } else if (currentView === 'week') {
+                  newDate.setDate(newDate.getDate() + 7);
+                } else {
+                  newDate.setDate(newDate.getDate() + 1);
+                }
+                break;
+              case 'TODAY':
+                setCurrentDate(new Date());
+                return;
+            }
+            setCurrentDate(newDate);
+          }}
+          onAddLesson={() => {
+            if (!selectedStudent) {
+              alert('まず生徒を選択してください');
+              return;
+            }
+            setModalState({
+              isOpen: true,
+              mode: 'create',
+              selectedDate: new Date()
+            });
+          }}
+          onRefresh={() => refetch()}
+          loading={loading}
+        />
+
+        {/* カレンダーと凡例を横並びに */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          {/* カレンダー */}
+          <div className="lg:col-span-3">
+            <CalendarView
+              localizer={localizer}
+              events={calendarEvents}
+              currentDate={currentDate}
+              currentView={currentView}
+              onNavigate={setCurrentDate}
+              onView={setCurrentView}
+              onEventClick={handleEventClick}
+              onSlotClick={handleSlotClick}
+              selectedStudent={selectedStudent}
+              loading={loading}
+            />
           </div>
-        )}
-
-        {/* カレンダー */}
-        <div className="bg-white rounded-xl shadow-xl border-0">
-          <CalendarView
-            localizer={localizer}
-            events={calendarEvents}
-            currentDate={currentDate}
-            currentView={currentView}
-            onNavigate={setCurrentDate}
-            onView={setCurrentView}
-            onEventClick={handleEventClick}
-            onSlotClick={handleSlotClick}
-            selectedStudent={selectedStudent}
-          />
-        </div>
-
-        {/* 凡例 */}
-        <div className="mt-8 bg-white rounded-xl shadow-lg border-0 p-6">
-          <h3 className="font-semibold text-gray-900 mb-4 text-lg">凡例</h3>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-blue-500 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">通常授業</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-purple-500 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">固定面談</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-orange-500 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">振替授業</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-green-500 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">追加授業</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-gray-400 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">欠席</span>
-            </div>
-            <div className="flex items-center space-x-3">
-              <div className="w-4 h-4 bg-red-300 rounded shadow-sm"></div>
-              <span className="text-sm font-medium text-gray-700">振替済み</span>
-            </div>
+          
+          {/* 凡例 */}
+          <div className="lg:col-span-1">
+            <LessonLegend />
           </div>
         </div>
 
@@ -334,6 +309,7 @@ export default function SchedulePage() {
           isOpen={modalState.isOpen && modalState.mode === 'create'}
           selectedDate={modalState.selectedDate}
           selectedStudent={selectedStudent}
+          students={students}
           teachers={teachers}
           onClose={closeModal}
           onCreate={createLessonSlot}

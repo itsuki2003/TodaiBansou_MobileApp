@@ -83,6 +83,7 @@
   @apply border-0 rounded-md shadow-sm cursor-pointer transition-all duration-200;
   font-size: 0.75rem;
   padding: 4px 8px;
+  border: none !important;
 }
 
 .rbc-event:hover {
@@ -99,48 +100,63 @@
 }
 
 .lesson-regular {
-  @apply bg-primary-100 border-l-4 border-primary-500 text-primary-900;
+  background-color: #3B82F6 !important; /* Blue-500 */
+  color: white !important;
+  border-left: 4px solid #1E40AF !important; /* Blue-800 */
 }
 
 .lesson-regular:hover {
-  @apply bg-primary-200;
+  background-color: #2563EB !important; /* Blue-600 */
 }
 
 .lesson-interview {
-  @apply bg-secondary-100 border-l-4 border-secondary-500 text-secondary-900;
+  background-color: #8B5CF6 !important; /* Purple-500 */
+  color: white !important;
+  border-left: 4px solid #5B21B6 !important; /* Purple-800 */
 }
 
 .lesson-interview:hover {
-  @apply bg-secondary-200;
+  background-color: #7C3AED !important; /* Purple-600 */
 }
 
 .lesson-makeup {
-  @apply bg-accent-100 border-l-4 border-accent-500 text-accent-900;
+  background-color: #F59E0B !important; /* Amber-500 */
+  color: white !important;
+  border-left: 4px solid #B45309 !important; /* Amber-800 */
 }
 
 .lesson-makeup:hover {
-  @apply bg-accent-200;
+  background-color: #D97706 !important; /* Amber-600 */
 }
 
 .lesson-additional {
-  @apply bg-success-100 border-l-4 border-success-500 text-success-900;
+  background-color: #10B981 !important; /* Green-500 */
+  color: white !important;
+  border-left: 4px solid #047857 !important; /* Green-800 */
 }
 
 .lesson-additional:hover {
-  @apply bg-success-200;
+  background-color: #059669 !important; /* Green-600 */
 }
 
 /* ステータス別のスタイル */
 .lesson-absent {
-  @apply bg-error-100 border-l-4 border-error-500 text-error-900 opacity-75;
+  background-color: #6B7280 !important; /* Gray-500 */
+  color: white !important;
+  border-left: 4px solid #374151 !important; /* Gray-700 */
+  opacity: 0.75;
 }
 
 .lesson-absent:hover {
-  @apply bg-error-200 opacity-90;
+  background-color: #4B5563 !important; /* Gray-600 */
+  opacity: 0.9;
 }
 
 .lesson-rescheduled {
-  @apply bg-warning-100 border-l-4 border-warning-500 text-warning-900 opacity-75;
+  background-color: #EF4444 !important; /* Red-500 */
+  color: white !important;
+  border-left: 4px solid #991B1B !important; /* Red-800 */
+  opacity: 0.75;
 }
 
 .lesson-rescheduled:hover {

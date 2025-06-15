@@ -18,6 +18,7 @@ import { ClipboardList } from 'lucide-react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import AppHeader from '../components/ui/AppHeader';
 import {
   LessonForCalendar,
   AbsenceRequestFormData,
@@ -347,17 +348,11 @@ export default function AbsenceRequestScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ヘッダー */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBackButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.headerBackText}>‹ 戻る</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>欠席申請</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <AppHeader 
+        title="欠席申請" 
+        showBackButton={true}
+        onBackPress={() => router.back()}
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 授業情報 */}
@@ -480,37 +475,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        paddingTop: 0,
-      },
-      android: {
-        paddingTop: 8,
-      },
-    }),
-  },
-  headerBackButton: {
-    padding: 8,
-  },
-  headerBackText: {
-    fontSize: 16,
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
   },
   content: {
     flex: 1,

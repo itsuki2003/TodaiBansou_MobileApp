@@ -12,11 +12,12 @@ import {
   ActivityIndicator,
   SafeAreaView,
 } from 'react-native';
-import { Send, Paperclip, X, ArrowLeft } from 'lucide-react-native';
+import { Send, Paperclip, X } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
 import ChatMessage from '@/components/ui/ChatMessage';
+import AppHeader from '@/components/ui/AppHeader';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -76,11 +77,30 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
   const [sending, setSending] = useState(false);
   
   const scrollViewRef = useRef<ScrollView>(null);
+  const subscriptionRef = useRef<any>(null);
   
   useEffect(() => {
+    if (!chatGroupId || !user) return;
+    
+    // 既存のサブスクリプションがあればクリーンアップ
+    if (subscriptionRef.current) {
+      subscriptionRef.current.unsubscribe();
+      subscriptionRef.current = null;
+    }
+    
     fetchMessages();
-    setupRealtimeSubscription();
-  }, [chatGroupId]);
+    const unsubscribe = setupRealtimeSubscription();
+    
+    return () => {
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe();
+        subscriptionRef.current = null;
+      }
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [chatGroupId, user?.id]);
 
   const fetchMessages = async () => {
     try {
@@ -137,8 +157,9 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
   };
 
   const setupRealtimeSubscription = () => {
+    const channelName = `chat_messages_${chatGroupId}_${Date.now()}`;
     const subscription = supabase
-      .channel(`chat_messages:${chatGroupId}`)
+      .channel(channelName)
       .on(
         'postgres_changes',
         {
@@ -185,6 +206,9 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
         }
       )
       .subscribe();
+
+    // refに保存
+    subscriptionRef.current = subscription;
 
     return () => {
       subscription.unsubscribe();
@@ -242,7 +266,7 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
           chat_group_id: chatGroupId,
           content: inputText.trim(),
           sender_user_id: user.id,
-          sender_role: userRole === 'student' ? '生徒' : '講師',
+          sender_role: userRole === 'parent' ? '生徒' : '講師',
           attachment_info: attachmentInfo,
         });
 
@@ -342,20 +366,11 @@ export default function ChatRoom({ chatGroupId }: ChatRoomProps) {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => {
-          try {
-            router.push('/(tabs)/chat');
-          } catch (error) {
-            // ナビゲーションエラーは無視
-            // フォールバック: router.back()を試行
-            router.back();
-          }
-        }}>
-          <ArrowLeft size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>チャット</Text>
-      </View>
+      <AppHeader 
+        title="チャット" 
+        showBackButton={true}
+        onBackPress={() => router.back()}
+      />
       
       <KeyboardAvoidingView
         style={styles.chatContainer}
@@ -446,26 +461,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  backButton: {
-    position: 'absolute',
-    left: 16,
-    padding: 4,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
   },
   chatContainer: {
     flex: 1,

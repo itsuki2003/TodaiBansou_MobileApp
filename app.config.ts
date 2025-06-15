@@ -2,11 +2,11 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 // デフォルトの設定を定義
 const defaultConfig: ExpoConfig = {
-  name: 'TodaiBansou_MobileApp',
+  name: '東大伴走',
   slug: 'todaibansou-mobile',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/images/icon.png',
+  icon: './assets/images/app-icon-square.png',
   userInterfaceStyle: 'light',
   splash: {
     image: './assets/images/icon.png',
@@ -17,17 +17,31 @@ const defaultConfig: ExpoConfig = {
     '**/*'
   ],
   ios: {
-    supportsTablet: true
+    supportsTablet: true,
+    infoPlist: {
+      UIViewControllerBasedStatusBarAppearance: true
+    }
   },
   android: {
     adaptiveIcon: {
-      foregroundImage: './assets/images/icon.png',
-      backgroundColor: '#ffffff'
+      foregroundImage: './assets/images/app-icon-square.png',
+      backgroundColor: '#2563EB'
     }
   },
   web: {
     favicon: './assets/images/favicon.png'
-  }
+  },
+  experiments: {
+    typedRoutes: false,
+  },
+  plugins: [
+    [
+      'expo-router',
+      {
+        origin: false,
+      },
+    ],
+  ],
 };
 
 export default ({ config }: ConfigContext): ExpoConfig => ({

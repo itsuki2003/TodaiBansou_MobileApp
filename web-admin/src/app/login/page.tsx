@@ -41,7 +41,7 @@ export default function LoginPage() {
       
       try {
         // router.replaceを使ってブラウザ履歴を汚染しないようにする
-        router.replace('/students');
+        router.replace('/');
         if (process.env.NODE_ENV === 'development') {
           console.log('🔐 router.replace実行成功');
         }

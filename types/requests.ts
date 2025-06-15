@@ -55,7 +55,8 @@ export interface AdditionalLessonRequestFormData {
   requested_date: string;
   requested_start_time: string;
   requested_end_time: string;
-  teacher_id?: string;
+  teacher_id?: string | null;
+  lesson_type: '通常授業' | '固定面談';
   notes?: string;
 }
 

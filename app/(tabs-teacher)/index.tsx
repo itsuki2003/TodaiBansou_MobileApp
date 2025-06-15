@@ -11,7 +11,7 @@ import {
   Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { format, isToday, isThisWeek, parseISO, addHours } from 'date-fns';
+import { format, addHours } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import {
   BookOpen,
@@ -21,7 +21,6 @@ import {
   Bell,
   Clock,
   CheckCircle2,
-  AlertCircle,
   User,
   ChevronRight,
 } from 'lucide-react-native';
@@ -29,7 +28,6 @@ import {
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
 import { TeacherGuard } from '../../components/common/RoleGuard';
-import ScreenWrapper from '../../components/common/ScreenWrapper';
 import type { Database } from '../../types/database.types';
 
 type Student = Database['public']['Tables']['students']['Row'];
@@ -185,34 +183,57 @@ export default function TeacherHomeScreen() {
   }, [fetchDashboardData]);
 
   const handleStudentPress = (studentId: string) => {
-    router.push(`/teacher/students/${studentId}`);
+    router.push({
+      pathname: '/teacher-student-detail',
+      params: { studentId: studentId }
+    });
   };
 
   const handleLessonPress = (lessonId: string) => {
-    router.push(`/teacher/lessons/${lessonId}`);
+    // TODO: 授業詳細画面の実装後に有効化
+    // router.push(`/teacher-lesson-detail?lessonId=${lessonId}`);
+    console.log('Lesson pressed:', lessonId);
   };
 
   const handleViewAllStudents = () => {
-    router.push('/teacher/students');
+    router.push('/(tabs-teacher)/students');
   };
 
   const handleViewSchedule = () => {
-    router.push('/teacher/schedule');
+    router.push('/(tabs-teacher)/calendar');
   };
 
   const handleViewMessages = () => {
-    router.push('/teacher/messages');
+    router.push('/(tabs-teacher)/chat');
   };
 
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#3B82F6" />
+          <Text style={styles.loadingText}>ダッシュボードを読み込み中...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (error) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{error}</Text>
+          <TouchableOpacity style={styles.retryButton} onPress={fetchDashboardData}>
+            <Text style={styles.retryButtonText}>再試行</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <TeacherGuard>
-      <ScreenWrapper 
-        loading={userRoleLoading || loading}
-        error={error ? { message: error, recoverable: true } : null}
-        onRetry={fetchDashboardData}
-        loadingMessage="ダッシュボードを読み込み中..."
-      >
+      <SafeAreaView style={styles.container}>
       {/* ヘッダー */}
       <View style={styles.header}>
         <View style={styles.headerContent}>
@@ -357,7 +378,10 @@ export default function TeacherHomeScreen() {
                 >
                   <View style={styles.upcomingLessonDate}>
                     <Text style={styles.upcomingLessonDateText}>
-                      {format(parseISO(lesson.slot_date), 'M/d(E)', { locale: ja })}
+                      {lesson.slot_date && !isNaN(new Date(lesson.slot_date).getTime()) ? 
+                        format(new Date(lesson.slot_date), 'M/d(E)', { locale: ja }) :
+                        '日付不明'
+                      }
                     </Text>
                     <Text style={styles.upcomingLessonTime}>
                       {lesson.start_time.slice(0, 5)}
@@ -394,7 +418,7 @@ export default function TeacherHomeScreen() {
         {/* 底部余白 */}
         <View style={styles.bottomSpacing} />
       </ScrollView>
-      </ScreenWrapper>
+      </SafeAreaView>
     </TeacherGuard>
   );
 }

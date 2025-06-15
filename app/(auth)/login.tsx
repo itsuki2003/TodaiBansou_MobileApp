@@ -15,7 +15,7 @@ import {
 import { Link } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
 import { validateEmail, validatePassword } from '../../utils/validation';
-import { Mail, Lock, BookOpen } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -69,11 +69,7 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.logoContainer}>
-          <View style={styles.logoWrapper}>
-            <BookOpen size={40} color="#3B82F6" />
-          </View>
-          <Text style={styles.appName}>東大伴走</Text>
-          <Text style={styles.subtitle}>中学受験に向けて、一緒に頑張りましょう</Text>
+          <Image source={require('../../logo.png')} style={styles.logo} />
         </View>
 
         <View style={styles.formContainer}>
@@ -144,26 +140,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 48,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 200,
+    height: 50,
     marginBottom: 16,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748B',
-    textAlign: 'center',
-    maxWidth: '80%',
+    resizeMode: 'contain',
   },
   formContainer: {
     width: '100%',

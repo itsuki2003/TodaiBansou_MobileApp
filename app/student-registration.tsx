@@ -11,11 +11,12 @@ import {
   Platform,
   ScrollView,
   SafeAreaView,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, User, School } from 'lucide-react-native';
+import { User, School } from 'lucide-react-native';
 import DateTimePicker from '@react-native-community/datetimepicker';
 
 export default function StudentRegistrationScreen() {
@@ -141,9 +142,7 @@ export default function StudentRegistrationScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View style={styles.header}>
-            <View style={styles.logoWrapper}>
-              <BookOpen size={40} color="#3B82F6" />
-            </View>
+            <Image source={require('../logo.png')} style={styles.logo} />
             <Text style={styles.title}>お子様情報の登録</Text>
             <Text style={styles.subtitle}>
               東大伴走をご利用いただくために、{'\n'}
@@ -293,14 +292,11 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     marginTop: 20,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 200,
+    height: 50,
     marginBottom: 16,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 24,

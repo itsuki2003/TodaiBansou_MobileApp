@@ -4,6 +4,15 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import { 
+  CheckCircle, 
+  Clock, 
+  Target, 
+  ThumbsUp, 
+  Zap, 
+  ClipboardList,
+  MessageCircle 
+} from 'lucide-react-native';
 
 interface ProgressIndicatorProps {
   current: number;
@@ -93,13 +102,16 @@ export default function ProgressIndicator({
     }
   };
 
-  const getProgressEmoji = () => {
-    if (total === 0) return '📋';
-    if (percentage === 100) return '🎉';
-    if (percentage >= 80) return '💪';
-    if (percentage >= 50) return '👍';
-    if (percentage > 0) return '📝';
-    return '⏰';
+  const getProgressIcon = () => {
+    const iconSize = size === 'small' ? 12 : size === 'large' ? 18 : 14;
+    const iconColor = colorStyles.text;
+    
+    if (total === 0) return <ClipboardList size={iconSize} color={iconColor} />;
+    if (percentage === 100) return <CheckCircle size={iconSize} color={iconColor} />;
+    if (percentage >= 80) return <Zap size={iconSize} color={iconColor} />;
+    if (percentage >= 50) return <ThumbsUp size={iconSize} color={iconColor} />;
+    if (percentage > 0) return <Target size={iconSize} color={iconColor} />;
+    return <Clock size={iconSize} color={iconColor} />;
   };
 
   return (
@@ -114,12 +126,13 @@ export default function ProgressIndicator({
         }
       ]}>
         <View style={styles.progressContent}>
+          {getProgressIcon()}
           <Text style={[
             styles.progressText,
             sizeStyles.text,
             { color: colorStyles.text }
           ]}>
-            {getProgressEmoji()} {current}/{total}
+            {current}/{total}
           </Text>
           
           {size !== 'small' && (
@@ -147,7 +160,7 @@ export default function ProgressIndicator({
       {/* 講師コメントインジケーター */}
       {hasComments && size !== 'small' && (
         <View style={styles.commentIndicator}>
-          <Text style={styles.commentEmoji}>💬</Text>
+          <MessageCircle size={10} color="#1E40AF" />
           <Text style={styles.commentText}>コメントあり</Text>
         </View>
       )}
@@ -198,6 +211,9 @@ export default function ProgressIndicator({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
   },
   progressContainer: {
     borderRadius: 8,
@@ -231,9 +247,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F9FF',
     borderRadius: 4,
     gap: 4,
-  },
-  commentEmoji: {
-    fontSize: 10,
   },
   commentText: {
     fontSize: 10,

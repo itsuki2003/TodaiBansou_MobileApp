@@ -9,372 +9,271 @@ import {
   Modal,
   Pressable,
   ActivityIndicator,
+  RefreshControl,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { 
+  Calendar as CalendarIcon, 
+  ChevronLeft, 
+  ChevronRight,
+  Video,
+  Clock,
+  UserX,
+  RefreshCw,
+  Plus,
+  AlertCircle,
+} from 'lucide-react-native';
 import { router } from 'expo-router';
+import { format, isSameDay, parseISO, startOfMonth, endOfMonth, addDays, subDays } from 'date-fns';
+import { ja } from 'date-fns/locale';
+import Reanimated, { FadeInDown, FadeOutUp } from 'react-native-reanimated';
+
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
-import ClassScheduleItem from '@/components/ui/ClassScheduleItem';
+import { useNotification } from '@/contexts/NotificationContext';
+import AppHeader from '@/components/ui/AppHeader';
+import type { Database } from '@/types/database.types';
 
-// 型定義
-type Teacher = {
-  full_name: string;
-};
+type LessonSlot = Database['public']['Tables']['lesson_slots']['Row'];
+type Teacher = Database['public']['Tables']['teachers']['Row'];
 
-type LessonSlot = {
-  id: string;
-  slot_date: string;
-  start_time: string;
-  end_time: string;
-  slot_type: '通常授業' | '固定面談' | '振替授業' | '追加授業';
-  status: '予定通り' | '実施済み' | '欠席' | '振替済み（振替元）';
-  teacher_id: string;
-  teachers: Teacher;
-  google_meet_link: string | null;
-};
+interface LessonSlotWithTeacher extends LessonSlot {
+  teachers?: Teacher;
+}
 
-type ProcessedLessonSlot = Omit<LessonSlot, 'teachers'> & {
-  teacher_name: string;
-};
+interface CalendarDay {
+  date: Date;
+  lessons: LessonSlotWithTeacher[];
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  isSelected: boolean;
+}
 
-type CalendarData = {
-  [date: string]: ProcessedLessonSlot[];
-};
+interface MonthData {
+  title: string;
+  days: CalendarDay[];
+}
 
-// 型の変換関数
-const convertSlotType = (type: LessonSlot['slot_type']): 'lesson' | 'meeting' => {
-  return type === '固定面談' ? 'meeting' : 'lesson';
-};
-
-// Mock data for demonstration
-const MOCK_CLASSES = {
-  '2023-05-30': [
-    {
-      id: '1',
-      type: 'lesson',
-      startTime: '16:00',
-      endTime: '17:30',
-      teacherName: '田中先生',
-      isAbsent: false,
-      isTransferred: false,
-      isAdditional: false,
-    },
-    {
-      id: '2',
-      type: 'meeting',
-      startTime: '18:00',
-      endTime: '18:30',
-      teacherName: '鈴木先生',
-      isAbsent: false,
-      isTransferred: false,
-      isAdditional: false,
-    }
-  ],
-  '2023-06-01': [
-    {
-      id: '3',
-      type: 'lesson',
-      startTime: '16:00',
-      endTime: '17:30',
-      teacherName: '田中先生',
-      isAbsent: true,
-      isTransferred: false,
-      isAdditional: false,
-    }
-  ],
-  '2023-06-03': [
-    {
-      id: '4',
-      type: 'lesson',
-      startTime: '10:00',
-      endTime: '11:30',
-      teacherName: '田中先生',
-      isAbsent: false,
-      isTransferred: true,
-      isAdditional: false,
-    }
-  ],
-  '2023-06-06': [
-    {
-      id: '5',
-      type: 'lesson',
-      startTime: '16:00',
-      endTime: '17:30',
-      teacherName: '田中先生',
-      isAbsent: false,
-      isTransferred: false,
-      isAdditional: false,
-    }
-  ],
-  '2023-06-10': [
-    {
-      id: '6',
-      type: 'lesson',
-      startTime: '10:00',
-      endTime: '11:30',
-      teacherName: '田中先生',
-      isAbsent: false,
-      isTransferred: false,
-      isAdditional: true,
-    }
-  ]
-};
-
-// Mock month data for the calendar
-const generateMonthData = () => {
-  const month = { 
-    title: '2023年6月',
-    days: [] as Array<{ date: string; hasClass: boolean; disabled: boolean; }>
-  };
-  
-  // Add days from previous month to align calendar grid
-  for (let i = 0; i < 4; i++) {
-    month.days.push({
-      date: `${28 + i}`,
-      hasClass: i === 2, // Example for May 30
-      disabled: true,
-    });
-  }
-  
-  // Current month days
-  for (let i = 1; i <= 30; i++) {
-    month.days.push({
-      date: `${i}`,
-      hasClass: [1, 3, 6, 10].includes(i), // Classes on these days
-      disabled: false,
-    });
-  }
-  
-  // Next month days to complete the grid
-  for (let i = 1; i <= 8; i++) {
-    month.days.push({
-      date: `${i}`,
-      hasClass: false,
-      disabled: true,
-    });
-  }
-  
-  return month;
-};
+const { width: screenWidth } = Dimensions.get('window');
 
 export default function CalendarScreen() {
   const { user, selectedStudent } = useAuth();
+  const { showNotification } = useNotification();
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [calendarData, setCalendarData] = useState<CalendarData>({});
+  const [refreshing, setRefreshing] = useState(false);
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(new Date().getDate().toString());
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [monthLessons, setMonthLessons] = useState<LessonSlotWithTeacher[]>([]);
   const [showAbsenceModal, setShowAbsenceModal] = useState(false);
-  const [selectedClass, setSelectedClass] = useState<LessonSlot | null>(null);
+  const [selectedLesson, setSelectedLesson] = useState<LessonSlotWithTeacher | null>(null);
+  const [animatedValue] = useState(new Animated.Value(0));
 
-  // 月のデータを生成する関数
-  const generateMonthData = useCallback((date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
+  // 月のデータを生成
+  const generateMonthData = useCallback((date: Date, lessons: LessonSlotWithTeacher[]): MonthData => {
+    const monthStart = startOfMonth(date);
+    const monthEnd = endOfMonth(date);
+    const startDate = subDays(monthStart, monthStart.getDay());
+    const endDate = addDays(monthEnd, 6 - monthEnd.getDay());
     
-    const monthData = {
-      title: `${year}年${month + 1}月`,
-      days: [] as Array<{ date: string; hasClass: boolean; disabled: boolean; }>
+    const days: CalendarDay[] = [];
+    let currentDate = startDate;
+    
+    while (currentDate <= endDate) {
+      const dayLessons = lessons.filter(lesson => 
+        lesson.slot_date && isSameDay(parseISO(lesson.slot_date), currentDate)
+      );
+      
+      days.push({
+        date: new Date(currentDate),
+        lessons: dayLessons,
+        isCurrentMonth: currentDate.getMonth() === date.getMonth(),
+        isToday: isSameDay(currentDate, new Date()),
+        isSelected: isSameDay(currentDate, selectedDate),
+      });
+      
+      currentDate = addDays(currentDate, 1);
+    }
+    
+    return {
+      title: format(date, 'yyyy年M月', { locale: ja }),
+      days,
     };
+  }, [selectedDate]);
 
-    // 前月の日付を追加
-    const firstDayOfWeek = firstDay.getDay();
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      const prevDate = new Date(year, month, -i);
-      monthData.days.unshift({
-        date: prevDate.getDate().toString(),
-        hasClass: false,
-        disabled: true,
-      });
-    }
+  // 授業データを取得
+  const fetchLessons = useCallback(async (month: Date) => {
+    if (!selectedStudent) return;
 
-    // 当月の日付を追加
-    for (let i = 1; i <= lastDay.getDate(); i++) {
-      const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i).padStart(2, '0')}`;
-      monthData.days.push({
-        date: i.toString(),
-        hasClass: !!calendarData[dateStr]?.length,
-        disabled: false,
-      });
-    }
-
-    // 翌月の日付を追加
-    const remainingDays = 42 - monthData.days.length; // 6行×7列のグリッド
-    for (let i = 1; i <= remainingDays; i++) {
-      monthData.days.push({
-        date: i.toString(),
-        hasClass: false,
-        disabled: true,
-      });
-    }
-
-    return monthData;
-  }, [calendarData]);
-
-  // カレンダーデータを取得する関数
-  const fetchCalendarData = useCallback(async (date: Date) => {
     try {
       setLoading(true);
-      setError(null);
-
-      if (!selectedStudent) {
-        // 生徒が選択されていない場合は何もしない
-        setCalendarData({});
-        setLoading(false);
-        return;
-      }
-
-      const year = date.getFullYear();
-      const month = date.getMonth();
-      const startDate = new Date(year, month, 1);
-      const endDate = new Date(year, month + 1, 0);
-
-      // 授業スロットを取得
-      const { data: slots, error: slotsError } = await supabase
+      const monthStart = startOfMonth(month);
+      const monthEnd = endOfMonth(month);
+      
+      const { data, error } = await supabase
         .from('lesson_slots')
         .select(`
-          id,
-          slot_date,
-          start_time,
-          end_time,
-          slot_type,
-          status,
-          teacher_id,
-          google_meet_link,
-          teachers:teacher_id (
-            full_name
+          *,
+          teachers (
+            id,
+            full_name,
+            email
           )
         `)
         .eq('student_id', selectedStudent.id)
-        .gte('slot_date', startDate.toISOString().split('T')[0])
-        .lte('slot_date', endDate.toISOString().split('T')[0])
-        .order('slot_date')
-        .order('start_time');
+        .gte('slot_date', format(monthStart, 'yyyy-MM-dd'))
+        .lte('slot_date', format(monthEnd, 'yyyy-MM-dd'))
+        .order('slot_date', { ascending: true })
+        .order('start_time', { ascending: true });
 
-      if (slotsError) throw slotsError;
+      if (error) throw error;
 
-      // 通常授業の回数制限を適用
-      const processedSlots = (slots as any[]).map(slot => ({
-        ...slot,
-        teacher_name: slot.teachers?.full_name || '未定',
-      }));
-
-      // 日付ごとにデータを整理
-      const groupedData = processedSlots.reduce((acc, slot) => {
-        const date = slot.slot_date;
-        if (!acc[date]) {
-          acc[date] = [];
-        }
-        acc[date].push(slot);
-        return acc;
-      }, {} as CalendarData);
-
-      setCalendarData(groupedData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : '予期せぬエラーが発生しました');
+      setMonthLessons(data || []);
+      
+      // 今日の授業があれば通知
+      const todayLessons = (data || []).filter(lesson => 
+        lesson.slot_date && isSameDay(parseISO(lesson.slot_date), new Date())
+      );
+      
+      if (todayLessons.length > 0) {
+        showNotification({
+          type: 'info',
+          title: '今日の授業',
+          message: `本日は${todayLessons.length}件の授業があります`,
+          autoHide: true,
+          duration: 3000,
+        });
+      }
+      
+    } catch (error) {
+      console.error('Error fetching lessons:', error);
+      showNotification({
+        type: 'error',
+        title: 'エラー',
+        message: '授業データの取得に失敗しました',
+        autoHide: true,
+      });
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  }, [selectedStudent?.id]);
+  }, [selectedStudent, showNotification]);
 
-  // 初期データ取得
   useEffect(() => {
     if (selectedStudent) {
-      fetchCalendarData(currentMonth);
+      fetchLessons(currentMonth);
+    } else {
+      setLoading(false);
     }
-  }, [currentMonth, fetchCalendarData, selectedStudent]);
+  }, [currentMonth, selectedStudent, fetchLessons]);
+
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    fetchLessons(currentMonth);
+  }, [currentMonth, fetchLessons]);
 
   const handlePrevMonth = () => {
-    const newDate = new Date(currentMonth);
     const today = new Date();
+    const sixMonthsAgo = new Date(today.getFullYear(), today.getMonth() - 6, 1);
+    const prevMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
     
-    // 過去6ヶ月までしか遡れない制限
-    const sixMonthsAgo = new Date(today);
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
-    
-    newDate.setMonth(newDate.getMonth() - 1);
-    
-    // 制限をチェック
-    if (newDate >= sixMonthsAgo) {
-      setCurrentMonth(newDate);
+    if (prevMonth >= sixMonthsAgo) {
+      Animated.timing(animatedValue, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentMonth(prevMonth);
+        animatedValue.setValue(0);
+      });
     }
   };
 
   const handleNextMonth = () => {
-    const newDate = new Date(currentMonth);
     const today = new Date();
+    const threeMonthsLater = new Date(today.getFullYear(), today.getMonth() + 3, 1);
+    const nextMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
     
-    // 未来3ヶ月までしか進めない制限
-    const threeMonthsLater = new Date(today);
-    threeMonthsLater.setMonth(today.getMonth() + 3);
-    
-    newDate.setMonth(newDate.getMonth() + 1);
-    
-    // 制限をチェック
-    if (newDate <= threeMonthsLater) {
-      setCurrentMonth(newDate);
+    if (nextMonth <= threeMonthsLater) {
+      Animated.timing(animatedValue, {
+        toValue: -1,
+        duration: 200,
+        useNativeDriver: true,
+      }).start(() => {
+        setCurrentMonth(nextMonth);
+        animatedValue.setValue(0);
+      });
     }
   };
 
-  const handleDateSelect = (date: string, disabled: boolean) => {
-    if (!disabled) {
-      setSelectedDate(date);
+  const handleDateSelect = (day: CalendarDay) => {
+    if (day.isCurrentMonth) {
+      setSelectedDate(day.date);
     }
   };
 
-  const handleClassPress = (classItem: ProcessedLessonSlot) => {
-    setSelectedClass(classItem as any);
-    if (classItem.status !== '欠席') {
+  const handleLessonPress = (lesson: LessonSlotWithTeacher) => {
+    setSelectedLesson(lesson);
+    if (lesson.status === '予定通り') {
       setShowAbsenceModal(true);
     }
   };
 
   const handleAbsenceRequest = () => {
     setShowAbsenceModal(false);
-    if (selectedClass) {
+    if (selectedLesson) {
       router.push({
-        pathname: '/absence-request' as any,
-        params: { lessonId: selectedClass.id }
+        pathname: '/absence-request',
+        params: { lessonId: selectedLesson.id }
       });
     }
   };
 
-  const handleAddClassRequest = () => {
-    router.push('/additional-lesson-request' as any);
+  const handleAddLessonRequest = () => {
+    router.push('/additional-lesson-request');
   };
 
-  // 選択された日付の予定を取得
-  const getClassesForSelectedDate = () => {
-    const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${selectedDate.padStart(2, '0')}`;
-    return calendarData[dateStr] || [];
+  const getLessonTypeColor = (type: string) => {
+    switch (type) {
+      case '通常授業': return '#3B82F6';
+      case '固定面談': return '#10B981';
+      case '振替授業': return '#F59E0B';
+      case '追加授業': return '#8B5CF6';
+      default: return '#6B7280';
+    }
   };
 
-  const month = generateMonthData(currentMonth);
+  const getLessonStatusIcon = (status: string, type: string) => {
+    if (status === '欠席') return <UserX size={16} color="#EF4444" />;
+    if (type === '振替授業') return <RefreshCw size={16} color="#F59E0B" />;
+    if (type === '追加授業') return <Plus size={16} color="#8B5CF6" />;
+    return <Clock size={16} color="#3B82F6" />;
+  };
 
-  if (loading) {
+  const monthData = generateMonthData(currentMonth, monthLessons);
+  const selectedDayLessons = monthData.days.find(day => 
+    isSameDay(day.date, selectedDate)
+  )?.lessons || [];
+
+  if (loading && !refreshing) {
     return (
       <SafeAreaView style={styles.container}>
+        <AppHeader title="授業予定" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>データを読み込み中...</Text>
+          <Text style={styles.loadingText}>カレンダーを読み込み中...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
-  if (error) {
+  if (!selectedStudent) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity
-            style={styles.retryButton}
-            onPress={() => fetchCalendarData(currentMonth)}
-          >
-            <Text style={styles.retryButtonText}>再試行</Text>
-          </TouchableOpacity>
+        <AppHeader title="授業予定" />
+        <View style={styles.emptyContainer}>
+          <AlertCircle size={48} color="#9CA3AF" />
+          <Text style={styles.emptyText}>生徒が選択されていません</Text>
         </View>
       </SafeAreaView>
     );
@@ -382,157 +281,199 @@ export default function CalendarScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>東大伴走</Text>
-        <Text style={styles.title}>授業予定</Text>
-      </View>
+      <AppHeader title="授業予定" />
       
-      <View style={styles.calendarHeader}>
-        <TouchableOpacity 
-          onPress={handlePrevMonth}
-          disabled={(() => {
-            const today = new Date();
-            const sixMonthsAgo = new Date(today);
-            sixMonthsAgo.setMonth(today.getMonth() - 6);
-            const prevMonth = new Date(currentMonth);
-            prevMonth.setMonth(prevMonth.getMonth() - 1);
-            return prevMonth < sixMonthsAgo;
-          })()}
-          style={(() => {
-            const today = new Date();
-            const sixMonthsAgo = new Date(today);
-            sixMonthsAgo.setMonth(today.getMonth() - 6);
-            const prevMonth = new Date(currentMonth);
-            prevMonth.setMonth(prevMonth.getMonth() - 1);
-            return prevMonth < sixMonthsAgo ? styles.disabledButton : {};
-          })()}
-        >
-          <ChevronLeft 
-            size={24} 
-            color={(() => {
-              const today = new Date();
-              const sixMonthsAgo = new Date(today);
-              sixMonthsAgo.setMonth(today.getMonth() - 6);
-              const prevMonth = new Date(currentMonth);
-              prevMonth.setMonth(prevMonth.getMonth() - 1);
-              return prevMonth < sixMonthsAgo ? "#CBD5E1" : "#64748B";
-            })()} 
+      <ScrollView
+        style={styles.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={['#3B82F6']}
+            tintColor="#3B82F6"
           />
-        </TouchableOpacity>
-        <Text style={styles.monthTitle}>{month.title}</Text>
-        <TouchableOpacity 
-          onPress={handleNextMonth}
-          disabled={(() => {
-            const today = new Date();
-            const threeMonthsLater = new Date(today);
-            threeMonthsLater.setMonth(today.getMonth() + 3);
-            const nextMonth = new Date(currentMonth);
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-            return nextMonth > threeMonthsLater;
-          })()}
-          style={(() => {
-            const today = new Date();
-            const threeMonthsLater = new Date(today);
-            threeMonthsLater.setMonth(today.getMonth() + 3);
-            const nextMonth = new Date(currentMonth);
-            nextMonth.setMonth(nextMonth.getMonth() + 1);
-            return nextMonth > threeMonthsLater ? styles.disabledButton : {};
-          })()}
-        >
-          <ChevronRight 
-            size={24} 
-            color={(() => {
-              const today = new Date();
-              const threeMonthsLater = new Date(today);
-              threeMonthsLater.setMonth(today.getMonth() + 3);
-              const nextMonth = new Date(currentMonth);
-              nextMonth.setMonth(nextMonth.getMonth() + 1);
-              return nextMonth > threeMonthsLater ? "#CBD5E1" : "#64748B";
-            })()} 
-          />
-        </TouchableOpacity>
-      </View>
-      
-      <View style={styles.calendarGrid}>
-        {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
-          <View key={`header-${index}`} style={styles.calendarHeaderCell}>
-            <Text style={[
-              styles.calendarHeaderText,
-              index === 0 ? styles.sundayText : {},
-              index === 6 ? styles.saturdayText : {},
-            ]}>
-              {day}
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* カレンダーヘッダー */}
+        <View style={styles.calendarHeader}>
+          <TouchableOpacity 
+            onPress={handlePrevMonth}
+            style={styles.monthButton}
+          >
+            <ChevronLeft size={24} color="#374151" />
+          </TouchableOpacity>
+          
+          <Animated.View style={{
+            transform: [{
+              translateX: animatedValue.interpolate({
+                inputRange: [-1, 0, 1],
+                outputRange: [-screenWidth, 0, screenWidth],
+              })
+            }]
+          }}>
+            <Text style={styles.monthTitle}>{monthData.title}</Text>
+          </Animated.View>
+          
+          <TouchableOpacity 
+            onPress={handleNextMonth}
+            style={styles.monthButton}
+          >
+            <ChevronRight size={24} color="#374151" />
+          </TouchableOpacity>
+        </View>
+
+        {/* 曜日ヘッダー */}
+        <View style={styles.weekHeader}>
+          {['日', '月', '火', '水', '木', '金', '土'].map((day, index) => (
+            <View key={day} style={styles.weekDay}>
+              <Text style={[
+                styles.weekDayText,
+                index === 0 && styles.sundayText,
+                index === 6 && styles.saturdayText,
+              ]}>
+                {day}
+              </Text>
+            </View>
+          ))}
+        </View>
+
+        {/* カレンダーグリッド */}
+        <View style={styles.calendarGrid}>
+          {monthData.days.map((day, index) => (
+            <TouchableOpacity
+              key={`${day.date.toISOString()}`}
+              style={[
+                styles.calendarCell,
+                !day.isCurrentMonth && styles.otherMonthCell,
+                day.isToday && styles.todayCell,
+                day.isSelected && styles.selectedCell,
+              ]}
+              onPress={() => handleDateSelect(day)}
+              activeOpacity={0.7}
+            >
+              <Text style={[
+                styles.dateText,
+                !day.isCurrentMonth && styles.otherMonthText,
+                day.isToday && styles.todayText,
+                day.isSelected && styles.selectedText,
+                index % 7 === 0 && day.isCurrentMonth && styles.sundayText,
+                index % 7 === 6 && day.isCurrentMonth && styles.saturdayText,
+              ]}>
+                {day.date.getDate()}
+              </Text>
+              
+              {day.lessons.length > 0 && (
+                <View style={styles.lessonIndicators}>
+                  {day.lessons.slice(0, 3).map((lesson, i) => (
+                    <View
+                      key={lesson.id}
+                      style={[
+                        styles.lessonDot,
+                        { backgroundColor: getLessonTypeColor(lesson.slot_type) },
+                      ]}
+                    />
+                  ))}
+                  {day.lessons.length > 3 && (
+                    <Text style={styles.moreLessons}>+{day.lessons.length - 3}</Text>
+                  )}
+                </View>
+              )}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* 選択日の授業一覧 */}
+        <View style={styles.daySchedule}>
+          <View style={styles.scheduleHeader}>
+            <CalendarIcon size={20} color="#3B82F6" />
+            <Text style={styles.scheduleTitle}>
+              {format(selectedDate, 'M月d日（E）', { locale: ja })}の予定
             </Text>
           </View>
-        ))}
-        
-        {month.days.map((day, index) => (
-          <TouchableOpacity
-            key={`day-${index}`}
-            style={[
-              styles.calendarCell,
-              day.disabled ? styles.disabledCell : {},
-              day.date === selectedDate && !day.disabled ? styles.selectedCell : {},
-            ]}
-            onPress={() => handleDateSelect(day.date, day.disabled)}
-            disabled={day.disabled}
+
+          {selectedDayLessons.length === 0 ? (
+            <View style={styles.noLessons}>
+              <Text style={styles.noLessonsText}>この日の授業はありません</Text>
+            </View>
+          ) : (
+            <Reanimated.View entering={FadeInDown} exiting={FadeOutUp}>
+              {selectedDayLessons.map((lesson) => (
+                <TouchableOpacity
+                  key={lesson.id}
+                  style={styles.lessonCard}
+                  onPress={() => handleLessonPress(lesson)}
+                  activeOpacity={0.8}
+                >
+                  <View style={styles.lessonHeader}>
+                    <View style={styles.lessonTime}>
+                      {getLessonStatusIcon(lesson.status, lesson.slot_type)}
+                      <Text style={styles.lessonTimeText}>
+                        {lesson.start_time?.substring(0, 5)} - {lesson.end_time?.substring(0, 5)}
+                      </Text>
+                    </View>
+                    <View style={[
+                      styles.lessonTypeBadge,
+                      { backgroundColor: `${getLessonTypeColor(lesson.slot_type)}20` }
+                    ]}>
+                      <Text style={[
+                        styles.lessonTypeText,
+                        { color: getLessonTypeColor(lesson.slot_type) }
+                      ]}>
+                        {lesson.slot_type}
+                      </Text>
+                    </View>
+                  </View>
+
+                  <View style={styles.lessonInfo}>
+                    <Text style={styles.teacherName}>
+                      {lesson.teachers?.full_name || '講師未定'}
+                    </Text>
+                    
+                    {lesson.status !== '予定通り' && (
+                      <Text style={[
+                        styles.lessonStatus,
+                        lesson.status === '欠席' && styles.absenceStatus,
+                      ]}>
+                        {lesson.status}
+                      </Text>
+                    )}
+                  </View>
+
+                  {lesson.google_meet_link && lesson.status === '予定通り' && (
+                    <TouchableOpacity 
+                      style={styles.meetButton}
+                      onPress={() => {
+                        // TODO: Open Google Meet link
+                        showNotification({
+                          type: 'info',
+                          title: 'Google Meet',
+                          message: '授業の開始時間になったらリンクが有効になります',
+                          autoHide: true,
+                        });
+                      }}
+                    >
+                      <Video size={16} color="#FFFFFF" />
+                      <Text style={styles.meetButtonText}>授業に参加</Text>
+                    </TouchableOpacity>
+                  )}
+                </TouchableOpacity>
+              ))}
+            </Reanimated.View>
+          )}
+
+          {/* 追加授業申請ボタン */}
+          <TouchableOpacity 
+            style={styles.addLessonButton}
+            onPress={handleAddLessonRequest}
           >
-            <Text style={[
-              styles.calendarCellText,
-              day.disabled ? styles.disabledText : {},
-              day.date === selectedDate && !day.disabled ? styles.selectedCellText : {},
-              index % 7 === 0 ? styles.sundayText : {},
-              index % 7 === 6 ? styles.saturdayText : {},
-            ]}>
-              {day.date}
-            </Text>
-            {day.hasClass && (
-              <View style={[
-                styles.classDot,
-                day.date === selectedDate && !day.disabled ? styles.selectedClassDot : {},
-              ]} />
-            )}
+            <Plus size={20} color="#3B82F6" />
+            <Text style={styles.addLessonText}>追加授業を申請する</Text>
           </TouchableOpacity>
-        ))}
-      </View>
-      
-      <View style={styles.scheduleHeader}>
-        <CalendarIcon size={18} color="#3B82F6" />
-        <Text style={styles.scheduleTitle}>
-          {currentMonth.toLocaleString('default', { month: 'long' })} {selectedDate}日の予定
-        </Text>
-      </View>
-      
-      <ScrollView style={styles.scheduleList}>
-        {getClassesForSelectedDate().length > 0 ? (
-          getClassesForSelectedDate().map((classItem) => (
-            <ClassScheduleItem
-              key={classItem.id}
-              type={convertSlotType(classItem.slot_type)}
-              startTime={classItem.start_time}
-              endTime={classItem.end_time}
-              teacherName={classItem.teacher_name}
-              isAbsent={classItem.status === '欠席'}
-              isTransferred={classItem.slot_type === '振替授業'}
-              isAdditional={classItem.slot_type === '追加授業'}
-              googleMeetLink={classItem.google_meet_link}
-              onPress={() => handleClassPress(classItem)}
-            />
-          ))
-        ) : (
-          <Text style={styles.noScheduleText}>
-            予定はありません
-          </Text>
-        )}
-        
-        <TouchableOpacity style={styles.addClassButton} onPress={handleAddClassRequest}>
-          <Text style={styles.addClassButtonText}>
-            ＋ 追加授業を申請する
-          </Text>
-        </TouchableOpacity>
+        </View>
       </ScrollView>
-      
-      {/* Absence Request Modal */}
+
+      {/* 欠席申請モーダル */}
       <Modal
         visible={showAbsenceModal}
         transparent={true}
@@ -543,23 +484,31 @@ export default function CalendarScreen() {
           <View style={styles.modalContainer}>
             <Text style={styles.modalTitle}>欠席連絡</Text>
             
-            {selectedClass && (
+            {selectedLesson && (
               <View style={styles.modalContent}>
                 <Text style={styles.modalText}>
                   以下の授業を欠席しますか？
                 </Text>
                 
-                <View style={styles.classDetails}>
-                  <Text style={styles.classDetailText}>
-                    日時: {currentMonth.toLocaleString('default', { month: 'long' })} {selectedDate}日 {selectedClass.start_time}～{selectedClass.end_time}
+                <View style={styles.lessonDetails}>
+                  <Text style={styles.detailLabel}>日時</Text>
+                  <Text style={styles.detailValue}>
+                    {selectedLesson.slot_date && format(parseISO(selectedLesson.slot_date), 'M月d日（E）', { locale: ja })}
+                    {' '}
+                    {selectedLesson.start_time?.substring(0, 5)} - {selectedLesson.end_time?.substring(0, 5)}
                   </Text>
-                  <Text style={styles.classDetailText}>
-                    担当: {(selectedClass as any).teacher_name || '未定'}
+                  
+                  <Text style={styles.detailLabel}>講師</Text>
+                  <Text style={styles.detailValue}>
+                    {selectedLesson.teachers?.full_name || '未定'}
                   </Text>
+                  
+                  <Text style={styles.detailLabel}>種別</Text>
+                  <Text style={styles.detailValue}>{selectedLesson.slot_type}</Text>
                 </View>
                 
-                <Text style={styles.absenceNote}>
-                  ※授業開始5時間前までに連絡が必要です
+                <Text style={styles.warningText}>
+                  ※ 授業開始5時間前までの連絡が必要です
                 </Text>
               </View>
             )}
@@ -588,96 +537,105 @@ export default function CalendarScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  content: {
+    flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
   },
-  logo: {
+  loadingText: {
+    marginTop: 16,
     fontSize: 16,
-    fontWeight: '700',
-    color: '#3B82F6',
-    position: 'absolute',
-    left: 16,
+    color: '#6B7280',
   },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
+  emptyContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    marginTop: 16,
+    fontSize: 16,
+    color: '#9CA3AF',
   },
   calendarHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingVertical: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  monthButton: {
+    padding: 8,
   },
   monthTitle: {
-    fontSize: 18,
+    fontSize: 20,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  weekHeader: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingBottom: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E7EB',
+  },
+  weekDay: {
+    flex: 1,
+    alignItems: 'center',
+  },
+  weekDayText: {
+    fontSize: 12,
     fontWeight: '500',
-    color: '#1E293B',
+    color: '#6B7280',
   },
   calendarGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    paddingBottom: 8,
-  },
-  calendarHeaderCell: {
-    width: '14.28%',
-    height: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  calendarHeaderText: {
-    fontSize: 12,
-    fontWeight: '500',
-    color: '#64748B',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 8,
+    paddingVertical: 8,
   },
   calendarCell: {
-    width: '14.28%',
-    height: 48,
-    justifyContent: 'center',
+    width: `${100 / 7}%`,
+    aspectRatio: 1,
+    padding: 4,
     alignItems: 'center',
+    justifyContent: 'center',
     position: 'relative',
   },
-  calendarCellText: {
-    fontSize: 16,
-    color: '#1E293B',
+  otherMonthCell: {
+    opacity: 0.3,
   },
-  classDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#3B82F6',
-    position: 'absolute',
-    bottom: 8,
-  },
-  disabledCell: {
-    opacity: 0.4,
-  },
-  disabledText: {
-    color: '#94A3B8',
+  todayCell: {
+    backgroundColor: '#EBF8FF',
+    borderRadius: 8,
   },
   selectedCell: {
     backgroundColor: '#3B82F6',
-    borderRadius: 24,
+    borderRadius: 8,
   },
-  selectedCellText: {
-    color: '#FFFFFF',
+  dateText: {
+    fontSize: 16,
+    color: '#111827',
+    marginBottom: 4,
+  },
+  otherMonthText: {
+    color: '#9CA3AF',
+  },
+  todayText: {
+    color: '#3B82F6',
     fontWeight: '600',
   },
-  selectedClassDot: {
-    backgroundColor: '#FFFFFF',
+  selectedText: {
+    color: '#FFFFFF',
+    fontWeight: '600',
   },
   sundayText: {
     color: '#EF4444',
@@ -685,42 +643,130 @@ const styles = StyleSheet.create({
   saturdayText: {
     color: '#3B82F6',
   },
+  lessonIndicators: {
+    flexDirection: 'row',
+    position: 'absolute',
+    bottom: 4,
+    gap: 2,
+  },
+  lessonDot: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+  },
+  moreLessons: {
+    fontSize: 8,
+    color: '#6B7280',
+    marginLeft: 2,
+  },
+  daySchedule: {
+    margin: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
+  },
   scheduleHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginBottom: 16,
   },
   scheduleTitle: {
-    fontSize: 16,
-    fontWeight: '500',
-    color: '#1E293B',
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#111827',
     marginLeft: 8,
   },
-  scheduleList: {
-    flex: 1,
-    padding: 16,
-  },
-  noScheduleText: {
-    fontSize: 16,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginTop: 24,
-  },
-  addClassButton: {
-    marginTop: 24,
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 8,
-    padding: 12,
+  noLessons: {
+    paddingVertical: 32,
     alignItems: 'center',
   },
-  addClassButtonText: {
+  noLessonsText: {
+    fontSize: 16,
+    color: '#9CA3AF',
+  },
+  lessonCard: {
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 8,
+    padding: 16,
+    marginBottom: 12,
+  },
+  lessonHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  lessonTime: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  lessonTimeText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#111827',
+  },
+  lessonTypeBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  lessonTypeText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  lessonInfo: {
+    marginBottom: 8,
+  },
+  teacherName: {
+    fontSize: 14,
+    color: '#374151',
+  },
+  lessonStatus: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+  },
+  absenceStatus: {
+    color: '#EF4444',
+    fontWeight: '500',
+  },
+  meetButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#3B82F6',
+    borderRadius: 6,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  meetButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  addLessonButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#EBF8FF',
+    borderRadius: 8,
+    paddingVertical: 12,
+    marginTop: 16,
+    gap: 8,
+  },
+  addLessonText: {
     color: '#3B82F6',
+    fontSize: 16,
     fontWeight: '500',
   },
   modalOverlay: {
@@ -731,98 +777,71 @@ const styles = StyleSheet.create({
   },
   modalContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 20,
-    width: '85%',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
     maxWidth: 400,
   },
   modalTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '600',
-    color: '#1E293B',
+    color: '#111827',
     marginBottom: 16,
     textAlign: 'center',
   },
   modalContent: {
-    marginBottom: 20,
+    marginBottom: 24,
   },
   modalText: {
     fontSize: 16,
-    color: '#1E293B',
-    marginBottom: 12,
+    color: '#374151',
+    marginBottom: 16,
     textAlign: 'center',
   },
-  classDetails: {
-    backgroundColor: '#F8FAFC',
-    padding: 12,
+  lessonDetails: {
+    backgroundColor: '#F9FAFB',
     borderRadius: 8,
+    padding: 16,
+    marginBottom: 16,
+  },
+  detailLabel: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginBottom: 2,
+  },
+  detailValue: {
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '500',
     marginBottom: 12,
   },
-  classDetailText: {
-    fontSize: 14,
-    color: '#334155',
-    marginBottom: 4,
-  },
-  absenceNote: {
+  warningText: {
     fontSize: 12,
     color: '#EF4444',
-    fontStyle: 'italic',
     textAlign: 'center',
+    fontStyle: 'italic',
   },
   modalActions: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    gap: 12,
   },
   modalButton: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    flex: 1,
+    paddingVertical: 12,
     borderRadius: 8,
-    minWidth: 100,
     alignItems: 'center',
   },
   cancelButton: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#F3F4F6',
   },
   cancelButtonText: {
-    color: '#64748B',
+    color: '#6B7280',
     fontWeight: '500',
   },
   confirmButton: {
     backgroundColor: '#EF4444',
   },
   confirmButtonText: {
-    color: '#FFFFFF',
-    fontWeight: '500',
-  },
-  disabledButton: {
-    opacity: 0.4,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  loadingText: {
-    fontSize: 16,
-    color: '#3B82F6',
-    marginTop: 16,
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  errorText: {
-    color: '#EF4444',
-    marginBottom: 16,
-  },
-  retryButton: {
-    backgroundColor: '#3B82F6',
-    padding: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
     color: '#FFFFFF',
     fontWeight: '500',
   },

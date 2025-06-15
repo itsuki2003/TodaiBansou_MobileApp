@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { Session, User } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Student, Teacher, Administrator } from '@/types/database.types';
+import { APICache, PerformanceMonitor } from '@/utils/performanceHelpers';
 
 export type UserRole = 'parent' | 'teacher' | 'admin' | null;
 
@@ -72,27 +73,42 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [needsStudentSelection, setNeedsStudentSelection] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  // エラーをクリアする関数
-  const clearAuthError = () => {
+  // エラーをクリアする関数（メモ化）
+  const clearAuthError = useCallback(() => {
     setAuthError(null);
-  };
+  }, []);
 
-  // 生徒選択機能
-  const selectStudent = async (student: Student) => {
+  // 生徒選択機能（メモ化）
+  const selectStudent = useCallback(async (student: Student) => {
     setSelectedStudent(student);
     setNeedsStudentSelection(false);
     await AsyncStorage.setItem('selectedStudentId', student.id);
-  };
+    
+    // キャッシュを更新
+    if (user?.id) {
+      const cacheKey = `userRole:${user.id}`;
+      const cachedData = APICache.get(cacheKey);
+      if (cachedData && cachedData.role === 'parent') {
+        APICache.set(cacheKey, cachedData, 5 * 60 * 1000); // キャッシュ期間を延長
+      }
+    }
+  }, [user]);
 
-  // 生徒選択をクリア（テスト用）
-  const clearStudentSelection = async () => {
+  // 生徒選択をクリア（テスト用・メモ化）
+  const clearStudentSelection = useCallback(async () => {
     setSelectedStudent(null);
     setNeedsStudentSelection(true);
     await AsyncStorage.removeItem('selectedStudentId');
-  };
+    
+    // 関連キャッシュをクリア
+    if (user?.id) {
+      const cacheKey = `userRole:${user.id}`;
+      APICache.remove(cacheKey);
+    }
+  }, [user]);
 
-  // 保存された生徒選択を復元
-  const loadSelectedStudent = async (availableStudents: Student[]) => {
+  // 保存された生徒選択を復元（メモ化）
+  const loadSelectedStudent = useCallback(async (availableStudents: Student[]) => {
     try {
       const savedStudentId = await AsyncStorage.getItem('selectedStudentId');
       
@@ -114,95 +130,129 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       // エラーハンドリング: 保存された生徒選択の読み込みエラー
     }
     return false;
-  };
+  }, []);
 
-  // ユーザーの役割を取得する関数
-  const fetchUserRole = async (userId: string) => {
+  // ユーザーの役割を取得する関数（最適化版）
+  const fetchUserRole = useCallback(async (userId: string) => {
+    const endTiming = PerformanceMonitor.startTiming('fetchUserRole');
+    
     try {
       setAuthError(null);
       
-      // まず管理者テーブルを確認
-      const { data: adminData, error: adminError } = await supabase
-        .from('administrators')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (adminError && adminError.code !== 'PGRST116') {
-        // エラーハンドリング: 管理者クエリエラー
-      }
-
-      if (adminData) {
-        setUserRole('admin');
-        setAdministrator(adminData);
+      // キャッシュから確認
+      const cacheKey = `userRole:${userId}`;
+      const cachedData = APICache.get(cacheKey);
+      if (cachedData) {
+        const { role, userData } = cachedData;
+        setUserRole(role);
+        
+        if (role === 'admin') {
+          setAdministrator(userData);
+        } else if (role === 'teacher') {
+          setTeacher(userData);
+          setSelectedTeacher(userData);
+        } else if (role === 'parent' && userData.length > 0) {
+          setStudents(userData);
+          if (userData.length === 1) {
+            setSelectedStudent(userData[0]);
+            setStudent(userData[0]);
+            setNeedsStudentSelection(false);
+          } else {
+            const restored = await loadSelectedStudent(userData);
+            if (!restored) {
+              setNeedsStudentSelection(true);
+            }
+          }
+        }
+        
         setIsFirstTimeUser(false);
         return;
       }
+      
+      // 並行してすべてのテーブルをクエリ（パフォーマンス最適化）
+      const [adminResult, teacherResult, studentResult] = await Promise.allSettled([
+        supabase
+          .from('administrators')
+          .select('*')
+          .eq('user_id', userId)
+          .single(),
+        supabase
+          .from('teachers')
+          .select('*')
+          .eq('user_id', userId)
+          .single(),
+        supabase
+          .from('students')
+          .select('*')
+          .eq('user_id', userId)
+      ]);
 
-      // 次に講師テーブルを確認
-      const { data: teacherData, error: teacherError } = await supabase
-        .from('teachers')
-        .select('*')
-        .eq('user_id', userId)
-        .single();
-
-      if (teacherError && teacherError.code !== 'PGRST116') {
-        // エラーハンドリング: 講師クエリエラー
+      // 管理者チェック
+      if (adminResult.status === 'fulfilled' && adminResult.value.data) {
+        const adminData = adminResult.value.data;
+        setUserRole('admin');
+        setAdministrator(adminData);
+        setIsFirstTimeUser(false);
+        
+        // キャッシュに保存（10分間）
+        APICache.set(cacheKey, { role: 'admin', userData: adminData }, 10 * 60 * 1000);
+        return;
       }
 
-      if (teacherData) {
+      // 講師チェック
+      if (teacherResult.status === 'fulfilled' && teacherResult.value.data) {
+        const teacherData = teacherResult.value.data;
         setUserRole('teacher');
         setTeacher(teacherData);
         setSelectedTeacher(teacherData);
         setIsFirstTimeUser(false);
+        
+        // キャッシュに保存（10分間）
+        APICache.set(cacheKey, { role: 'teacher', userData: teacherData }, 10 * 60 * 1000);
         return;
       }
 
-      // 最後に生徒テーブルを確認（全ての生徒を取得）
-      const { data: studentData, error: studentError } = await supabase
-        .from('students')
-        .select('*')
-        .eq('user_id', userId);
+      // 生徒/保護者チェック
+      if (studentResult.status === 'fulfilled' && studentResult.value.data) {
+        const studentData = studentResult.value.data;
+        
+        if (studentData.length > 0) {
+          setUserRole('parent');
+          setIsFirstTimeUser(false);
+          setStudents(studentData);
 
-      if (studentError) {
-        // エラーハンドリング: 生徒クエリエラー
-        throw studentError;
-      }
-
-      if (studentData && studentData.length > 0) {
-        setUserRole('parent');
-        setIsFirstTimeUser(false);
-        setStudents(studentData);
-
-        // 生徒選択ロジック
-        if (studentData.length === 1) {
-          // 生徒が1人の場合は自動選択
-          setSelectedStudent(studentData[0]);
-          setStudent(studentData[0]);
-          setNeedsStudentSelection(false);
-        } else {
-          // 複数生徒の場合、以前の選択を復元を試みる
-          const restored = await loadSelectedStudent(studentData);
-          if (!restored) {
-            // 復元できない場合は選択画面を表示
-            setNeedsStudentSelection(true);
+          // 生徒選択ロジック
+          if (studentData.length === 1) {
+            setSelectedStudent(studentData[0]);
+            setStudent(studentData[0]);
+            setNeedsStudentSelection(false);
+          } else {
+            const restored = await loadSelectedStudent(studentData);
+            if (!restored) {
+              setNeedsStudentSelection(true);
+            }
           }
+          
+          // キャッシュに保存（5分間）
+          APICache.set(cacheKey, { role: 'parent', userData: studentData }, 5 * 60 * 1000);
+          return;
         }
-        return;
       }
 
       // どちらにも該当しない場合（初回ユーザー）
       setUserRole('parent');
       setIsFirstTimeUser(true);
+      
     } catch (error) {
-      // エラーハンドリング: ユーザーロール取得エラー
+      console.error('fetchUserRole error:', error);
       setAuthError('ユーザー情報の取得に失敗しました。もう一度お試しください。');
       setUserRole(null);
       setIsFirstTimeUser(false);
     } finally {
       setUserRoleLoading(false);
+      endTiming();
     }
-  };
+  }, [loadSelectedStudent]);
 
   useEffect(() => {
     // 現在のセッションを取得
@@ -250,28 +300,50 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => subscription.unsubscribe();
   }, []);
 
-  // 認証メソッド
-  const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  };
+  // 認証メソッド（メモ化）
+  const signIn = useCallback(async (email: string, password: string) => {
+    const endTiming = PerformanceMonitor.startTiming('signIn');
+    try {
+      const { error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+    } finally {
+      endTiming();
+    }
+  }, []);
 
-  const signUp = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) throw error;
-  };
+  const signUp = useCallback(async (email: string, password: string) => {
+    const endTiming = PerformanceMonitor.startTiming('signUp');
+    try {
+      const { error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+    } finally {
+      endTiming();
+    }
+  }, []);
 
-  const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) throw error;
-    // ローカルストレージもクリア
-    await AsyncStorage.removeItem('selectedStudentId');
-  };
+  const signOut = useCallback(async () => {
+    const endTiming = PerformanceMonitor.startTiming('signOut');
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      
+      // キャッシュとローカルストレージをクリア
+      APICache.clear();
+      await AsyncStorage.removeItem('selectedStudentId');
+    } finally {
+      endTiming();
+    }
+  }, []);
 
-  const resetPassword = async (email: string) => {
-    const { error } = await supabase.auth.resetPasswordForEmail(email);
-    if (error) throw error;
-  };
+  const resetPassword = useCallback(async (email: string) => {
+    const endTiming = PerformanceMonitor.startTiming('resetPassword');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email);
+      if (error) throw error;
+    } finally {
+      endTiming();
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ 

@@ -10,11 +10,14 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  SafeAreaView,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mail, BookOpen, ArrowLeft } from 'lucide-react-native';
+import { Mail } from 'lucide-react-native';
 import * as Linking from 'expo-linking';
+import AppHeader from '@/components/ui/AppHeader';
 
 export default function ResetPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -55,27 +58,23 @@ export default function ResetPasswordScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <ArrowLeft size={24} color="#64748B" />
-        </TouchableOpacity>
-
+        <AppHeader 
+          title="パスワードリセット" 
+          showBackButton={true}
+          onBackPress={() => router.back()}
+        />
+        
         <View style={styles.logoContainer}>
-          <View style={styles.logoWrapper}>
-            <BookOpen size={40} color="#3B82F6" />
-          </View>
-          <Text style={styles.appName}>東大伴走</Text>
-          <Text style={styles.subtitle}>パスワードリセット</Text>
+          <Image source={require('../../logo.png')} style={styles.logo} />
         </View>
 
         <View style={styles.formContainer}>
@@ -116,8 +115,9 @@ export default function ResetPasswordScreen() {
             <Text style={styles.backToLoginText}>ログイン画面に戻る</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -126,39 +126,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
-  backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    zIndex: 1,
-  },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 48,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 200,
+    height: 50,
     marginBottom: 16,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748B',
+    resizeMode: 'contain',
   },
   formContainer: {
     width: '100%',

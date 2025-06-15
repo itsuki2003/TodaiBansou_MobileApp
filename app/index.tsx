@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 
 export default function HomeScreen() {
@@ -7,7 +7,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>東大伴走アプリ</Text>
+      <Image source={require('../logo.png')} style={styles.logo} />
       
       <TouchableOpacity 
         style={styles.button} 
@@ -27,11 +27,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     padding: 20,
   },
-  title: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#111827',
+  logo: {
+    width: 250,
+    height: 60,
     marginBottom: 40,
+    resizeMode: 'contain',
   },
   button: {
     backgroundColor: '#3B82F6',

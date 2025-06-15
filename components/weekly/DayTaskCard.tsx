@@ -9,6 +9,7 @@ import {
   UIManager,
   Platform,
 } from 'react-native';
+import { Check, MessageCircle } from 'lucide-react-native';
 
 import { DayTasks } from '../../types/weeklyTasks';
 import ProgressIndicator from './ProgressIndicator';
@@ -139,7 +140,7 @@ export default function DayTaskCard({
                   task.is_completed && styles.checkboxCompleted
                 ]}>
                   {task.is_completed && (
-                    <Text style={styles.checkmark}>✓</Text>
+                    <Check size={12} color="#FFFFFF" />
                   )}
                 </View>
 
@@ -171,7 +172,10 @@ export default function DayTaskCard({
       {/* 講師コメントプレビュー */}
       {day.comments.length > 0 && (
         <View style={styles.commentPreview}>
-          <Text style={styles.commentLabel}>💬 講師コメント</Text>
+          <View style={styles.commentLabelContainer}>
+            <MessageCircle size={14} color="#1E40AF" />
+            <Text style={styles.commentLabel}>講師コメント</Text>
+          </View>
           <Text
             style={styles.commentText}
             numberOfLines={2}
@@ -312,11 +316,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#10B981',
     borderColor: '#10B981',
   },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   taskContent: {
     flex: 1,
     fontSize: 14,
@@ -344,11 +343,16 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: '#3B82F6',
   },
+  commentLabelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
   commentLabel: {
     fontSize: 12,
     fontWeight: '600',
     color: '#1E40AF',
-    marginBottom: 4,
+    marginLeft: 4,
   },
   commentText: {
     fontSize: 13,

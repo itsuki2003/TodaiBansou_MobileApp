@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { ja } from 'date-fns/locale';
+import { ChevronLeft, ChevronRight } from 'lucide-react-native';
 
 import { WeekNavigation } from '../../types/weeklyTasks';
 
@@ -46,7 +47,7 @@ export default function WeekNavigator({
         activeOpacity={0.7}
       >
         <View style={styles.arrowContainer}>
-          <Text style={styles.arrow}>‹</Text>
+          <ChevronLeft size={16} color="#374151" />
         </View>
         <Text style={styles.navButtonText}>前の週</Text>
       </TouchableOpacity>
@@ -81,12 +82,10 @@ export default function WeekNavigator({
           styles.arrowContainer,
           !navigation.canGoNext && styles.arrowContainerDisabled
         ]}>
-          <Text style={[
-            styles.arrow,
-            !navigation.canGoNext && styles.arrowDisabled
-          ]}>
-            ›
-          </Text>
+          <ChevronRight 
+            size={16} 
+            color={!navigation.canGoNext ? "#D1D5DB" : "#374151"} 
+          />
         </View>
       </TouchableOpacity>
     </View>
@@ -135,14 +134,6 @@ const styles = StyleSheet.create({
   },
   arrowContainerDisabled: {
     backgroundColor: '#F3F4F6',
-  },
-  arrow: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#374151',
-  },
-  arrowDisabled: {
-    color: '#D1D5DB',
   },
   currentWeekContainer: {
     alignItems: 'center',

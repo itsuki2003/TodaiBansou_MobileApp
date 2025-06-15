@@ -142,14 +142,7 @@ export default function CalendarView({
           const slot = event.resource;
           const className = getEventClassName(slot.slot_type, slot.status);
           return {
-            className,
-            style: {
-              border: 'none',
-              borderRadius: '6px',
-              color: 'white',
-              fontSize: '12px',
-              padding: '4px 8px'
-            }
+            className
           };
         }}
         dayPropGetter={(date) => {

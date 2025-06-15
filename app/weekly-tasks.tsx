@@ -7,9 +7,8 @@ import {
   SafeAreaView,
   ActivityIndicator,
   Alert,
-  Dimensions,
-  Animated,
   RefreshControl,
+  Dimensions,
 } from 'react-native';
 import { PanGestureHandler, GestureHandlerRootView } from 'react-native-gesture-handler';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -21,6 +20,7 @@ import { useAuth } from '../contexts/AuthContext';
 import WeekNavigator from '../components/weekly/WeekNavigator';
 import DayTaskCard from '../components/weekly/DayTaskCard';
 import ProgressIndicator from '../components/weekly/ProgressIndicator';
+import AppHeader from '../components/ui/AppHeader';
 import { supabase } from '../lib/supabaseClient';
 
 const { width: screenWidth } = Dimensions.get('window');
@@ -31,7 +31,15 @@ export default function WeeklyTasksScreen() {
   const params = useLocalSearchParams();
   
   // 初期週の設定（URLパラメータから取得、なければ今週）
-  const initialWeek = params.week as string || format(startOfWeek(new Date(), { weekStartsOn: 0 }), 'yyyy-MM-dd');
+  // ホーム画面と同じ週開始日計算を使用（月曜日始まり）
+  const getWeekStartDate = (date: Date) => {
+    const d = new Date(date);
+    const day = d.getDay(); // 0 (Sunday) - 6 (Saturday)
+    const diff = d.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is Sunday
+    return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  };
+  
+  const initialWeek = params.week as string || getWeekStartDate(new Date());
   
   const [currentWeek, setCurrentWeek] = useState(initialWeek);
   const [weeklyData, setWeeklyData] = useState<WeeklyTasksData | null>(null);
@@ -40,9 +48,6 @@ export default function WeeklyTasksScreen() {
   const [error, setError] = useState<WeeklyTasksError | null>(null);
   const [navigation, setNavigation] = useState<WeekNavigation | null>(null);
 
-  // アニメーション関連
-  const slideAnim = new Animated.Value(0);
-  const [animationDirection, setAnimationDirection] = useState<'left' | 'right' | 'none'>('none');
 
   // 週間データの取得
   const fetchWeeklyData = useCallback(async (weekStartDate: string, showLoading = true) => {
@@ -56,6 +61,12 @@ export default function WeeklyTasksScreen() {
     setError(null);
 
     try {
+      console.log('DEBUG Weekly: Fetching data for:', {
+        student_id: selectedStudent.id,
+        weekStartDate,
+        user: user?.id
+      });
+
       const weekStart = new Date(weekStartDate);
       const weekEnd = addDays(weekStart, 6);
 
@@ -66,6 +77,8 @@ export default function WeeklyTasksScreen() {
         .eq('student_id', selectedStudent.id)
         .eq('target_week_start_date', weekStartDate)
         .maybeSingle();
+
+      console.log('DEBUG Weekly: Todo list result:', { todoListData, todoListError });
 
       if (todoListError && todoListError.code !== 'PGRST116') {
         throw todoListError;
@@ -130,6 +143,13 @@ export default function WeeklyTasksScreen() {
         teacher_name: comment.teachers?.full_name
       }));
 
+      console.log('DEBUG Weekly: Tasks and comments:', {
+        tasks: tasks.length,
+        comments: comments.length,
+        taskList: tasks.slice(0, 3),
+        commentList: comments.slice(0, 3)
+      });
+
       // 日付ごとにデータを整理
       const daysData = Array.from({ length: 7 }, (_, i) => {
         const date = addDays(weekStart, i);
@@ -185,7 +205,7 @@ export default function WeeklyTasksScreen() {
   const updateNavigation = useCallback((weekStartDate: string) => {
     const currentDate = new Date(weekStartDate);
     const today = new Date();
-    const thisWeekStart = startOfWeek(today, { weekStartsOn: 0 });
+    const thisWeekStart = new Date(getWeekStartDate(today));
     
     const previousWeek = format(subWeeks(currentDate, 1), 'yyyy-MM-dd');
     const nextWeek = format(addWeeks(currentDate, 1), 'yyyy-MM-dd');
@@ -205,26 +225,10 @@ export default function WeeklyTasksScreen() {
   const changeWeek = useCallback((newWeek: string, direction: 'left' | 'right' = 'none') => {
     if (newWeek === currentWeek) return;
 
-    setAnimationDirection(direction);
-    
-    // アニメーション実行
-    Animated.sequence([
-      Animated.timing(slideAnim, {
-        toValue: direction === 'left' ? -screenWidth : direction === 'right' ? screenWidth : 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
     setCurrentWeek(newWeek);
     updateNavigation(newWeek);
     fetchWeeklyData(newWeek);
-  }, [currentWeek, slideAnim, updateNavigation, fetchWeeklyData]);
+  }, [currentWeek, updateNavigation, fetchWeeklyData]);
 
   // タスクの完了状態切り替え
   const toggleTaskCompletion = useCallback(async (taskId: string, isCompleted: boolean) => {
@@ -276,10 +280,12 @@ export default function WeeklyTasksScreen() {
     }
   }, []);
 
-  // 日別画面への遷移
+  // 日別画面への遷移（タップ時は何もしない、または詳細画面を作成する場合はここを変更）
   const navigateToDay = useCallback((date: string) => {
-    router.push(`/(tabs)/?date=${date}`);
-  }, [router]);
+    // 現在は何もしない（タップ無効化）
+    // 将来的に日別詳細画面を作成する場合はここを変更
+    console.log('Tapped on date:', date);
+  }, []);
 
   // リフレッシュ
   const handleRefresh = useCallback(() => {
@@ -334,15 +340,12 @@ export default function WeeklyTasksScreen() {
   return (
     <GestureHandlerRootView style={styles.container}>
       <SafeAreaView style={styles.container}>
-        {/* ヘッダー */}
-        <View style={styles.header}>
-          <Text style={styles.logo}>東大伴走</Text>
-          <View style={styles.headerCenter}>
-            <Text style={styles.headerTitle}>週間やることリスト</Text>
-            <Text style={styles.headerSubtitle}>{weeklyData.weekDisplay}</Text>
-          </View>
-          <View style={{ width: 60 }} />
-        </View>
+        <AppHeader 
+          title="週間やることリスト" 
+          subtitle={weeklyData.weekDisplay}
+          showBackButton={true}
+          onBackPress={() => router.back()}
+        />
 
         {/* 週ナビゲーター */}
         {navigation && (
@@ -362,14 +365,7 @@ export default function WeeklyTasksScreen() {
         />
 
         {/* 日別カード一覧 */}
-        <Animated.View
-          style={[
-            styles.contentContainer,
-            {
-              transform: [{ translateX: slideAnim }],
-            },
-          ]}
-        >
+        <View style={styles.contentContainer}>
           <ScrollView
             style={styles.scrollView}
             showsVerticalScrollIndicator={false}
@@ -410,7 +406,7 @@ export default function WeeklyTasksScreen() {
             {/* 底部余白 */}
             <View style={styles.bottomSpacing} />
           </ScrollView>
-        </Animated.View>
+        </View>
       </SafeAreaView>
     </GestureHandlerRootView>
   );
@@ -420,35 +416,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  logo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#3B82F6',
-  },
-  headerCenter: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  headerSubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginTop: 2,
   },
   contentContainer: {
     flex: 1,
@@ -524,3 +491,5 @@ const styles = StyleSheet.create({
     height: 20,
   },
 });
+
+export default WeeklyTasksScreen;

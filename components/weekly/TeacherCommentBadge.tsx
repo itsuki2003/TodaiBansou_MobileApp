@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
 } from 'react-native';
+import { MessageCircle } from 'lucide-react-native';
 
 interface TeacherCommentBadgeProps {
   count: number;
@@ -24,7 +25,7 @@ export default function TeacherCommentBadge({
       styles.container,
       isSmall ? styles.containerSmall : styles.containerMedium
     ]}>
-      <Text style={styles.emoji}>💬</Text>
+      <MessageCircle size={isSmall ? 10 : 12} color="#1E40AF" />
       <Text style={[
         styles.count,
         isSmall ? styles.countSmall : styles.countMedium
@@ -45,6 +46,7 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
     borderWidth: 1,
     borderColor: '#BAE6FD',
+    gap: 2,
   },
   containerSmall: {
     paddingHorizontal: 4,
@@ -53,10 +55,6 @@ const styles = StyleSheet.create({
   containerMedium: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-  },
-  emoji: {
-    fontSize: 10,
-    marginRight: 2,
   },
   count: {
     fontWeight: '600',

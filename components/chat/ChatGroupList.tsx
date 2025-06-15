@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import AppHeader from '@/components/ui/AppHeader';
 
 type ChatGroup = {
   id: string;
@@ -56,7 +57,7 @@ export default function ChatGroupList() {
 
         const studentIds = assignments.map(a => a.student_id);
         query = query.in('student_id', studentIds);
-      } else if (userRole === 'student') {
+      } else if (userRole === 'parent') {
         // 生徒の場合、自分のチャットグループを取得
         query = query.eq('student_id', user.id);
       }
@@ -105,10 +106,7 @@ export default function ChatGroupList() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>東大伴走</Text>
-        <Text style={styles.headerTitle}>チャット</Text>
-      </View>
+      <AppHeader title="チャット" />
       
       <FlatList
         data={chatGroups}
@@ -144,27 +142,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  logo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#3B82F6',
-    marginRight: 8,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
   },
   centered: {
     flex: 1,

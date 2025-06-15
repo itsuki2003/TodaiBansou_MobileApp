@@ -11,10 +11,8 @@ import {
   TextInput,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { format, isWithinInterval, startOfWeek, endOfWeek } from 'date-fns';
-import { ja } from 'date-fns/locale';
+import { format, startOfWeek } from 'date-fns';
 import {
-  ArrowLeft,
   Search,
   User,
   CheckCircle2,
@@ -27,6 +25,8 @@ import {
 
 import { useAuth } from '../../contexts/AuthContext';
 import { supabase } from '../../lib/supabaseClient';
+import { TeacherGuard } from '../../components/common/RoleGuard';
+import AppHeader from '../../components/ui/AppHeader';
 import type { Database } from '../../types/database.types';
 
 type Student = Database['public']['Tables']['students']['Row'];
@@ -157,11 +157,10 @@ export default function TeacherStudentsScreen() {
   }, [fetchStudents]);
 
   const handleStudentPress = (studentId: string) => {
-    router.push(`/teacher/students/${studentId}`);
-  };
-
-  const handleGoBack = () => {
-    router.back();
+    router.push({
+      pathname: '/teacher-student-detail',
+      params: { studentId: studentId }
+    });
   };
 
   const renderStudentItem = ({ item }: { item: StudentWithDetails }) => {
@@ -267,80 +266,71 @@ export default function TeacherStudentsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <ArrowLeft size={24} color="#374151" />
-          </TouchableOpacity>
-          <Text style={styles.title}>担当生徒</Text>
-        </View>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>生徒情報を読み込み中...</Text>
-        </View>
-      </SafeAreaView>
+      <TeacherGuard>
+        <SafeAreaView style={styles.container}>
+          <AppHeader title="担当生徒" />
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#3B82F6" />
+            <Text style={styles.loadingText}>生徒情報を読み込み中...</Text>
+          </View>
+        </SafeAreaView>
+      </TeacherGuard>
     );
   }
 
   if (error) {
     return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <ArrowLeft size={24} color="#374151" />
-          </TouchableOpacity>
-          <Text style={styles.title}>担当生徒</Text>
-        </View>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchStudents}>
-            <Text style={styles.retryButtonText}>再試行</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
+      <TeacherGuard>
+        <SafeAreaView style={styles.container}>
+          <AppHeader title="担当生徒" />
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorText}>{error}</Text>
+            <TouchableOpacity style={styles.retryButton} onPress={fetchStudents}>
+              <Text style={styles.retryButtonText}>再試行</Text>
+            </TouchableOpacity>
+          </View>
+        </SafeAreaView>
+      </TeacherGuard>
     );
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <ArrowLeft size={24} color="#374151" />
-        </TouchableOpacity>
-        <Text style={styles.title}>担当生徒</Text>
-      </View>
+    <TeacherGuard>
+      <SafeAreaView style={styles.container}>
+        <AppHeader title="担当生徒" />
 
-      <View style={styles.searchContainer}>
-        <View style={styles.searchInputContainer}>
-          <Search size={20} color="#9CA3AF" />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="生徒名で検索..."
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            returnKeyType="search"
-          />
+        <View style={styles.searchContainer}>
+          <View style={styles.searchInputContainer}>
+            <Search size={20} color="#9CA3AF" />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="生徒名で検索..."
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              returnKeyType="search"
+            />
+          </View>
         </View>
-      </View>
 
-      <FlatList
-        data={filteredStudents}
-        renderItem={renderStudentItem}
-        keyExtractor={(item) => item.student.id}
-        style={styles.list}
-        contentContainerStyle={filteredStudents.length === 0 ? styles.emptyContainer : undefined}
-        ListEmptyComponent={renderEmptyState}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={['#3B82F6']}
-            tintColor="#3B82F6"
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      />
-    </SafeAreaView>
+        <FlatList
+          data={filteredStudents}
+          renderItem={renderStudentItem}
+          keyExtractor={(item) => item.student.id}
+          style={styles.list}
+          contentContainerStyle={filteredStudents.length === 0 ? styles.emptyContainer : undefined}
+          ListEmptyComponent={renderEmptyState}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={['#3B82F6']}
+              tintColor="#3B82F6"
+            />
+          }
+          showsVerticalScrollIndicator={false}
+        />
+      </SafeAreaView>
+    </TeacherGuard>
   );
 }
 
@@ -348,24 +338,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    backgroundColor: '#FFFFFF',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#111827',
   },
   searchContainer: {
     paddingHorizontal: 16,

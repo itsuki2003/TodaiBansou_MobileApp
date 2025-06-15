@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo, useCallback } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,7 @@ const CELEBRATION_MESSAGES = [
 
 const { width: screenWidth } = Dimensions.get('window');
 
-export default function TaskItem({ title, isCompleted, onToggle, onCelebration }: TaskItemProps) {
+const TaskItem = memo(function TaskItem({ title, isCompleted, onToggle, onCelebration }: TaskItemProps) {
   const [showCelebration, setShowCelebration] = useState(false);
   const [celebrationMessage, setCelebrationMessage] = useState('');
   
@@ -40,7 +40,7 @@ export default function TaskItem({ title, isCompleted, onToggle, onCelebration }
   const celebrationOpacity = useRef(new Animated.Value(0)).current;
   const celebrationScale = useRef(new Animated.Value(0.5)).current;
 
-  const handleToggle = async () => {
+  const handleToggle = useCallback(async () => {
     const newCompletedState = !isCompleted;
     
     // タスクの状態を切り替え
@@ -113,7 +113,7 @@ export default function TaskItem({ title, isCompleted, onToggle, onCelebration }
         });
       }, 2000);
     }
-  };
+  }, [isCompleted, onToggle, onCelebration, scaleAnim, bounceAnim, celebrationOpacity, celebrationScale]);
 
   const bounceTransform = bounceAnim.interpolate({
     inputRange: [0, 0.5, 1],
@@ -168,7 +168,9 @@ export default function TaskItem({ title, isCompleted, onToggle, onCelebration }
       )}
     </View>
   );
-}
+});
+
+export default TaskItem;
 
 const styles = StyleSheet.create({
   wrapper: {

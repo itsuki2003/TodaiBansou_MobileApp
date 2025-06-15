@@ -6,11 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  SafeAreaView,
 } from 'react-native';
-import { ChevronLeft } from 'lucide-react-native';
+import { User, BookOpen, Users, Calendar, GraduationCap, School } from 'lucide-react-native';
 import { router } from 'expo-router';
 import { supabase } from '../../lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import AppHeader from '@/components/ui/AppHeader';
 
 // 型定義
 type Student = {
@@ -138,34 +140,51 @@ export default function ProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
-      {/* ヘッダー */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-        >
-          <ChevronLeft size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.title}>プロフィール</Text>
-        <View style={styles.placeholder} />
-      </View>
+    <SafeAreaView style={styles.container}>
+      <AppHeader 
+        title="プロフィール" 
+        showBackButton={true}
+        onBackPress={() => router.push('/(tabs)/settings')}
+      />
 
-      <ScrollView style={styles.content}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {/* プロフィールヘッダー */}
+        <View style={styles.profileHeader}>
+          <View style={styles.avatarContainer}>
+            <User size={32} color="#3B82F6" />
+          </View>
+          <Text style={styles.studentName}>{profileData.student.full_name}</Text>
+          <Text style={styles.studentGrade}>{profileData.student.grade}</Text>
+        </View>
+
         {/* 生徒情報 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>生徒情報</Text>
+          <View style={styles.sectionHeaderContainer}>
+            <GraduationCap size={20} color="#3B82F6" />
+            <Text style={styles.sectionTitle}>生徒情報</Text>
+          </View>
           <View style={styles.card}>
             <View style={styles.infoRow}>
-              <Text style={styles.label}>氏名</Text>
+              <View style={styles.labelContainer}>
+                <User size={16} color="#64748B" />
+                <Text style={styles.label}>氏名</Text>
+              </View>
               <Text style={styles.value}>{profileData.student.full_name}</Text>
             </View>
+            <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.label}>学年</Text>
+              <View style={styles.labelContainer}>
+                <BookOpen size={16} color="#64748B" />
+                <Text style={styles.label}>学年</Text>
+              </View>
               <Text style={styles.value}>{profileData.student.grade}</Text>
             </View>
+            <View style={styles.divider} />
             <View style={styles.infoRow}>
-              <Text style={styles.label}>通塾先</Text>
+              <View style={styles.labelContainer}>
+                <School size={16} color="#64748B" />
+                <Text style={styles.label}>通塾先</Text>
+              </View>
               <Text style={styles.value}>{profileData.student.school_attended}</Text>
             </View>
           </View>
@@ -173,40 +192,56 @@ export default function ProfileScreen() {
 
         {/* 担当講師情報 */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>担当講師情報</Text>
+          <View style={styles.sectionHeaderContainer}>
+            <Users size={20} color="#10B981" />
+            <Text style={styles.sectionTitle}>担当講師</Text>
+          </View>
           <View style={styles.card}>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>面談担当</Text>
-              <Text style={styles.value}>{profileData.teachers.interview}</Text>
+            <View style={styles.teacherRow}>
+              <View style={styles.teacherInfo}>
+                <View style={styles.teacherIconContainer}>
+                  <User size={16} color="#10B981" />
+                </View>
+                <View style={styles.teacherDetails}>
+                  <Text style={styles.teacherRole}>面談担当</Text>
+                  <Text style={styles.teacherName}>{profileData.teachers.interview}</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>授業担当</Text>
-              <Text style={styles.value}>{profileData.teachers.class}</Text>
+            <View style={styles.divider} />
+            <View style={styles.teacherRow}>
+              <View style={styles.teacherInfo}>
+                <View style={styles.teacherIconContainer}>
+                  <BookOpen size={16} color="#8B5CF6" />
+                </View>
+                <View style={styles.teacherDetails}>
+                  <Text style={styles.teacherRole}>授業担当</Text>
+                  <Text style={styles.teacherName}>{profileData.teachers.class}</Text>
+                </View>
+              </View>
             </View>
           </View>
         </View>
 
         {/* 基本の授業スケジュール */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>基本の授業スケジュール</Text>
+          <View style={styles.sectionHeaderContainer}>
+            <Calendar size={20} color="#F59E0B" />
+            <Text style={styles.sectionTitle}>基本スケジュール</Text>
+          </View>
           <View style={styles.card}>
-            {/* スケジュールデータがないため、仮のダミーデータを表示 */}
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>月曜日</Text>
-              <Text style={styles.value}>17:00～18:00</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>水曜日</Text>
-              <Text style={styles.value}>17:00～18:00</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.label}>金曜日</Text>
-              <Text style={styles.value}>17:00～18:00</Text>
+            <View style={styles.scheduleNote}>
+              <Text style={styles.scheduleNoteText}>
+                詳細なスケジュールはカレンダー画面でご確認ください
+              </Text>
             </View>
           </View>
         </View>
+
+        {/* 底部余白 */}
+        <View style={styles.bottomSpacing} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -215,38 +250,22 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  backButton: {
-    padding: 8,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-  },
-  placeholder: {
-    width: 40,
-  },
   content: {
     flex: 1,
   },
   section: {
     padding: 16,
   },
+  sectionHeaderContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
     color: '#1E293B',
-    marginBottom: 12,
+    marginLeft: 8,
   },
   card: {
     backgroundColor: '#F8FAFC',
@@ -255,24 +274,104 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
+  profileHeader: {
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 24,
+    margin: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  avatarContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: '#EFF6FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+    borderWidth: 3,
+    borderColor: '#3B82F6',
+  },
+  studentName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  studentGrade: {
+    fontSize: 16,
+    color: '#64748B',
+  },
   infoRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 12,
   },
-  borderBottom: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   label: {
     fontSize: 16,
     color: '#64748B',
+    marginLeft: 8,
   },
   value: {
     fontSize: 16,
     color: '#1E293B',
     fontWeight: '500',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#E2E8F0',
+    marginVertical: 4,
+  },
+  teacherRow: {
+    paddingVertical: 12,
+  },
+  teacherInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  teacherIconContainer: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#F0FDF4',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  teacherDetails: {
+    flex: 1,
+  },
+  teacherRole: {
+    fontSize: 14,
+    color: '#64748B',
+    marginBottom: 2,
+  },
+  teacherName: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
+  },
+  scheduleNote: {
+    padding: 16,
+    backgroundColor: '#FEF3C7',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  scheduleNoteText: {
+    fontSize: 14,
+    color: '#92400E',
+    textAlign: 'center',
+  },
+  bottomSpacing: {
+    height: 32,
   },
   centerContent: {
     justifyContent: 'center',

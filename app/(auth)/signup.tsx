@@ -10,10 +10,13 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  Image,
+  SafeAreaView,
 } from 'react-native';
 import { Link, router } from 'expo-router';
 import { useAuth } from '../../contexts/AuthContext';
-import { Mail, Lock, BookOpen, ArrowLeft } from 'lucide-react-native';
+import { Mail, Lock } from 'lucide-react-native';
+import AppHeader from '../../components/ui/AppHeader';
 
 export default function SignUpScreen() {
   const [email, setEmail] = useState('');
@@ -68,27 +71,23 @@ export default function SignUpScreen() {
   };
 
   return (
-    <KeyboardAvoidingView 
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
+    <SafeAreaView style={styles.container}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        style={styles.keyboardView}
       >
-        <TouchableOpacity 
-          style={styles.backButton}
-          onPress={() => router.back()}
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
-          <ArrowLeft size={24} color="#64748B" />
-        </TouchableOpacity>
-
+        <AppHeader 
+          title="新規アカウント登録" 
+          showBackButton={true}
+          onBackPress={() => router.back()}
+        />
+        
         <View style={styles.logoContainer}>
-          <View style={styles.logoWrapper}>
-            <BookOpen size={40} color="#3B82F6" />
-          </View>
-          <Text style={styles.appName}>東大伴走</Text>
-          <Text style={styles.subtitle}>新規アカウント登録</Text>
+          <Image source={require('../../logo.png')} style={styles.logo} />
         </View>
 
         <View style={styles.formContainer}>
@@ -149,8 +148,9 @@ export default function SignUpScreen() {
             <Text style={styles.footerText}>へ</Text>
           </View>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
@@ -159,39 +159,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
+  keyboardView: {
+    flex: 1,
+  },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     padding: 20,
   },
-  backButton: {
-    position: 'absolute',
-    top: 40,
-    left: 20,
-    zIndex: 1,
-  },
   logoContainer: {
     alignItems: 'center',
     marginBottom: 48,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 200,
+    height: 50,
     marginBottom: 16,
-  },
-  appName: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#1E293B',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#64748B',
+    resizeMode: 'contain',
   },
   formContainer: {
     width: '100%',

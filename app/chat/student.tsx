@@ -13,7 +13,7 @@ export default function StudentChatScreen() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!userRoleLoading && user && userRole === 'student' && selectedStudent) {
+    if (!userRoleLoading && user && userRole === 'parent' && selectedStudent) {
       fetchStudentChatGroup();
     } else if (!userRoleLoading && (!user || userRole !== 'student')) {
       router.replace('/');

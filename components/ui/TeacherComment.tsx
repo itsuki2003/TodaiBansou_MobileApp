@@ -9,9 +9,10 @@ import {
 export interface TeacherCommentProps {
   content: string;
   createdAt: string;
+  teacherName?: string;
 }
 
-export default function TeacherComment({ content, createdAt }: TeacherCommentProps) {
+export default function TeacherComment({ content, createdAt, teacherName }: TeacherCommentProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const formattedDate = new Date(createdAt).toLocaleDateString('ja-JP', {

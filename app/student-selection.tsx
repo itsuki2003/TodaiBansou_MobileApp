@@ -6,10 +6,11 @@ import {
   StyleSheet,
   SafeAreaView,
   ScrollView,
+  Image,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useAuth } from '@/contexts/AuthContext';
-import { BookOpen, User } from 'lucide-react-native';
+import { User } from 'lucide-react-native';
 import type { Student } from '@/types/database.types';
 
 export default function StudentSelectionScreen() {
@@ -24,9 +25,7 @@ export default function StudentSelectionScreen() {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.header}>
-          <View style={styles.logoWrapper}>
-            <BookOpen size={40} color="#3B82F6" />
-          </View>
+          <Image source={require('../logo.png')} style={styles.logo} />
           <Text style={styles.title}>お子様を選択</Text>
           <Text style={styles.subtitle}>
             どちらのお子様としてログインしますか？
@@ -80,14 +79,11 @@ const styles = StyleSheet.create({
     marginBottom: 32,
     marginTop: 20,
   },
-  logoWrapper: {
-    width: 80,
-    height: 80,
-    borderRadius: 20,
-    backgroundColor: '#EFF6FF',
-    justifyContent: 'center',
-    alignItems: 'center',
+  logo: {
+    width: 200,
+    height: 50,
     marginBottom: 16,
+    resizeMode: 'contain',
   },
   title: {
     fontSize: 24,

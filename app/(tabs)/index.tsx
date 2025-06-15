@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+import React, { useEffect, useState, useCallback, useRef, memo, useMemo } from 'react';
 import {
   View,
   Text,
@@ -11,17 +11,19 @@ import {
   SafeAreaView,
   Animated,
   Dimensions,
-  Image,
 } from 'react-native';
 import { ChevronLeft, ChevronRight, Calendar, CalendarDays, UserX, BookOpen, PartyPopper } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import TaskItem from '@/components/ui/TaskItem';
 import TeacherCommentComponent from '@/components/ui/TeacherComment';
+import AppHeader from '@/components/ui/AppHeader';
 import { useAuth } from '@/contexts/AuthContext';
 import { format } from 'date-fns';
 import { ja } from 'date-fns/locale';
 import type { Task, TeacherComment, TodoList } from '@/types/database.types';
+import { useDebounce, PerformanceMonitor } from '@/utils/performanceHelpers';
+import { useOptimizedQuery } from '@/hooks/useOptimizedQuery';
 
 // 今日の日付を 'YYYY-MM-DD' 形式で取得するヘルパー関数
 const getTodayDateString = () => {
@@ -156,7 +158,7 @@ export default function HomeScreen() {
         .select('*')
         .eq('student_id', selectedStudent.id)
         .eq('target_week_start_date', weekStartDate)
-        .eq('status', '公開済み')
+        .in('status', ['公開済み', '下書き'])
         .single();
 
       if (todoListError) {
@@ -203,7 +205,6 @@ export default function HomeScreen() {
     } catch (err: any) {
       const errorMessage = err.message || '予期せぬエラーが発生しました';
       setError(errorMessage);
-      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('データ取得エラー', errorMessage);
     } finally {
       setLoading(false);
@@ -270,9 +271,7 @@ export default function HomeScreen() {
   if (loading && !refreshing) { // 初回ロード時のみフルスクリーンローディング
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Image source={require('../../logo.png')} style={styles.logo} />
-        </View>
+        <AppHeader title="今日のやることリスト" />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>データを読み込み中...</Text>
@@ -284,9 +283,7 @@ export default function HomeScreen() {
   if (error && !tasks.length && !teacherComments.length) { // データが何もない場合のエラー表示
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <Image source={require('../../logo.png')} style={styles.logo} />
-        </View>
+        <AppHeader title="今日のやることリスト" />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{error}</Text>
           <TouchableOpacity style={styles.retryButton} onPress={fetchTodayData}>
@@ -299,15 +296,10 @@ export default function HomeScreen() {
   
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Image source={require('../../logo.png')} style={styles.logo} />
-        <View style={styles.headerContent}>
-          <Text style={styles.headerTitle}>今日のやることリスト</Text>
-          <Text style={styles.dateText}>
-            {format(new Date(), 'M月d日 (E)', { locale: ja })}
-          </Text>
-        </View>
-      </View> 
+      <AppHeader 
+        title="今日のやることリスト" 
+        subtitle={format(new Date(), 'M月d日 (E)', { locale: ja })}
+      /> 
       <ScrollView
         style={styles.scrollView}
         contentContainerStyle={styles.content}
@@ -482,35 +474,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF', // 全体の背景色
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-    backgroundColor: '#FFFFFF',
-  },
-  logo: {
-    width: 40,
-    height: 40,
-    marginRight: 12,
-  },
-  headerContent: {
-    flex: 1,
-    alignItems: 'center',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1E293B',
-    marginBottom: 4,
-  },
-  dateText: {
-    fontSize: 14,
-    color: '#64748B',
   },
   scrollView: {
     flex: 1,

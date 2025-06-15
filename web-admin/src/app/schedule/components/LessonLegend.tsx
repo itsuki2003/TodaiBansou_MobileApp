@@ -2,11 +2,20 @@
 
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faInfoCircle } from '@fortawesome/free-solid-svg-icons';
-import { LESSON_COLORS, STATUS_COLORS } from '../constants/colors';
 
 interface LessonLegendProps {
   className?: string;
 }
+
+// 凡例用の色定義（calendar.cssと同じ色）
+const LEGEND_COLORS = {
+  通常授業: '#3B82F6', // Blue-500
+  固定面談: '#8B5CF6', // Purple-500  
+  振替授業: '#F59E0B', // Amber-500
+  追加授業: '#10B981', // Green-500
+  欠席: '#6B7280',     // Gray-500
+  振替済み: '#EF4444'  // Red-500
+};
 
 export default function LessonLegend({ className = '' }: LessonLegendProps) {
   return (
@@ -21,9 +30,9 @@ export default function LessonLegend({ className = '' }: LessonLegendProps) {
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-3">授業種別</h4>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {Object.entries(LESSON_COLORS).map(([type, colors]) => (
+            {Object.entries(LEGEND_COLORS).slice(0, 4).map(([type, color]) => (
               <div key={type} className="flex items-center space-x-3">
-                <div className={`w-4 h-4 rounded ${colors.legendBg} shadow-sm`} />
+                <div className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: color }} />
                 <span className="text-sm font-medium text-gray-700">{type}</span>
               </div>
             ))}
@@ -34,12 +43,14 @@ export default function LessonLegend({ className = '' }: LessonLegendProps) {
         <div>
           <h4 className="text-sm font-medium text-gray-700 mb-3">ステータス</h4>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            {Object.entries(STATUS_COLORS).map(([status, colors]) => (
-              <div key={status} className="flex items-center space-x-3">
-                <div className={`w-4 h-4 rounded ${colors.bg} border ${colors.border} shadow-sm`} />
-                <span className="text-sm font-medium text-gray-700">{status}</span>
-              </div>
-            ))}
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: LEGEND_COLORS.欠席, opacity: 0.75 }} />
+              <span className="text-sm font-medium text-gray-700">欠席</span>
+            </div>
+            <div className="flex items-center space-x-3">
+              <div className="w-4 h-4 rounded shadow-sm" style={{ backgroundColor: LEGEND_COLORS.振替済み, opacity: 0.75 }} />
+              <span className="text-sm font-medium text-gray-700">振替済み</span>
+            </div>
           </div>
         </div>
       </div>

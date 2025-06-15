@@ -10,9 +10,9 @@ import {
   Linking,
   Alert,
 } from 'react-native';
-import { ArrowLeft } from 'lucide-react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
+import AppHeader from '@/components/ui/AppHeader';
 import Markdown from 'react-native-markdown-display';
 
 interface NotificationCategory {
@@ -80,44 +80,19 @@ export default function NotificationDetailScreen() {
 
       setNotification(notificationWithCategory);
 
-      // 通知を既読マークにする処理
-      // This would require implementing read status tracking
-      // markNotificationAsRead(notificationId);
       
     } catch (err) {
-      // エラーはsetErrorでハンドリング
       setError('お知らせの取得に失敗しました');
     } finally {
       setLoading(false);
     }
   }, [notificationId]);
 
-  // 既読ステータスのマーキング機能
-  // const markNotificationAsRead = async (notificationId: string) => {
-  //   try {
-  //     // This would require user authentication and the notification_reads table
-  //     // const { data: session } = await supabase.auth.getSession();
-  //     // if (session?.user) {
-  //     //   await supabase
-  //     //     .from('notification_reads')
-  //     //     .upsert({
-  //     //       user_id: session.user.id,
-  //     //       notification_id: notificationId,
-  //     //       read_at: new Date().toISOString(),
-  //     //     });
-  //     // }
-  //   } catch (err) {
-  //     // エラーハンドリング: 既読マークエラー
-  //   }
-  // };
 
   useEffect(() => {
     fetchNotificationDetail();
   }, [fetchNotificationDetail]);
 
-  const handleGoBack = () => {
-    router.back();
-  };
 
   const markdownStyles = {
     body: {
@@ -167,7 +142,6 @@ export default function NotificationDetailScreen() {
         Alert.alert('エラー', 'このURLを開くことができません');
       }
     } catch (err) {
-      // エラーはAlertで表示するため、console.errorは削除
       Alert.alert('エラー', 'URLを開く際にエラーが発生しました');
     }
   };
@@ -175,12 +149,11 @@ export default function NotificationDetailScreen() {
   if (loading) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <ArrowLeft size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.title}>お知らせ</Text>
-        </View>
+        <AppHeader 
+          title="お知らせ" 
+          showBackButton={true}
+          onBackPress={() => router.back()}
+        />
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
           <Text style={styles.loadingText}>読み込み中...</Text>
@@ -192,12 +165,11 @@ export default function NotificationDetailScreen() {
   if (error || !notification) {
     return (
       <SafeAreaView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-            <ArrowLeft size={24} color="#1E293B" />
-          </TouchableOpacity>
-          <Text style={styles.title}>お知らせ</Text>
-        </View>
+        <AppHeader 
+          title="お知らせ" 
+          showBackButton={true}
+          onBackPress={() => router.back()}
+        />
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>
             {error || 'お知らせが見つかりません'}
@@ -212,12 +184,11 @@ export default function NotificationDetailScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={handleGoBack}>
-          <ArrowLeft size={24} color="#1E293B" />
-        </TouchableOpacity>
-        <Text style={styles.title}>お知らせ</Text>
-      </View>
+      <AppHeader 
+        title="お知らせ" 
+        showBackButton={true}
+        onBackPress={() => router.back()}
+      />
       
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.notificationHeader}>
@@ -261,23 +232,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  backButton: {
-    marginRight: 12,
-    padding: 4,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
   },
   content: {
     flex: 1,

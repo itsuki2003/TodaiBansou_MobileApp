@@ -19,6 +19,7 @@ import { Calendar, ClipboardList } from 'lucide-react-native';
 
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../lib/supabaseClient';
+import AppHeader from '../components/ui/AppHeader';
 import {
   AdditionalLessonRequestFormData,
   TeacherOption,
@@ -34,82 +35,27 @@ export default function AdditionalLessonRequestScreen() {
   const [formData, setFormData] = useState<AdditionalLessonRequestFormData>({
     requested_date: format(addDays(new Date(), 1), 'yyyy-MM-dd'),
     requested_start_time: '16:00',
-    requested_end_time: '17:00',
-    teacher_id: '',
-    lesson_type: '通常授業', // 授業タイプを追加
+    requested_end_time: '17:30',
+    teacher_id: null,
+    lesson_type: '通常授業',
     notes: '',
   });
 
-  const [teachers, setTeachers] = useState<TeacherOption[]>([]);
+  const [lessonDuration, setLessonDuration] = useState(90); // デフォルト90分
+
   const [availableSlots, setAvailableSlots] = useState<AvailableTimeSlot[]>([]);
-  const [timeSlotOptions] = useState<TimeSlotOption[]>([
-    { label: '15:00 - 16:00', value: '15:00-16:00', isAvailable: true },
-    { label: '16:00 - 17:00', value: '16:00-17:00', isAvailable: true },
-    { label: '17:00 - 18:00', value: '17:00-18:00', isAvailable: true },
-    { label: '18:00 - 19:00', value: '18:00-19:00', isAvailable: true },
-    { label: '19:00 - 20:00', value: '19:00-20:00', isAvailable: true },
-    { label: '20:00 - 21:00', value: '20:00-21:00', isAvailable: true },
-  ]);
+  const durationOptions = [
+    { label: '30分', value: 30 },
+    { label: '60分', value: 60 },
+    { label: '90分', value: 90 },
+    { label: '120分', value: 120 },
+  ];
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<RequestError | null>(null);
   const [showDatePicker, setShowDatePicker] = useState(false);
 
-  // 講師一覧の取得
-  const fetchTeachers = useCallback(async () => {
-    if (!user || !selectedStudent) return;
-
-    try {
-      // 担当講師の取得
-      const { data: assignmentsData, error: assignmentsError } = await supabase
-        .from('assignments')
-        .select(`
-          teacher_id,
-          role,
-          teachers (
-            id,
-            full_name,
-            account_status
-          )
-        `)
-        .eq('student_id', selectedStudent.id)
-        .eq('status', '有効');
-
-      if (assignmentsError) throw assignmentsError;
-
-      const teacherOptions: TeacherOption[] = (assignmentsData || [])
-        .filter(assignment => (assignment.teachers as any)?.account_status === '有効')
-        .map(assignment => ({
-          id: (assignment.teachers as any)!.id,
-          name: (assignment.teachers as any)!.full_name,
-          isAssigned: true,
-          availability: 'unknown' as const,
-          specialties: assignment.role === '面談担当（リスト編集可）' 
-            ? ['面談', '学習プランニング'] 
-            : ['授業'],
-        }));
-
-      setTeachers(teacherOptions);
-
-      // デフォルトで面談担当講師を選択
-      const interviewTeacher = teacherOptions.find(t => 
-        t.specialties?.includes('面談')
-      );
-      if (interviewTeacher && !formData.teacher_id) {
-        setFormData(prev => ({ ...prev, teacher_id: interviewTeacher.id }));
-      }
-
-    } catch (err) {
-      // エラーハンドリング: 講師データ取得エラー
-      setError({
-        type: 'network',
-        message: '講師情報の取得に失敗しました',
-        details: err instanceof Error ? err.message : '不明なエラー',
-        recoverable: true,
-      });
-    }
-  }, [user, selectedStudent, formData.teacher_id]);
 
   // フォームバリデーション
   const validateForm = (): boolean => {
@@ -155,25 +101,12 @@ export default function AdditionalLessonRequestScreen() {
       return false;
     }
 
-    // 授業時間の長さチェック（30分〜120分）
-    const startMinutes = parseInt(startTime.split(':')[0]) * 60 + parseInt(startTime.split(':')[1]);
-    const endMinutes = parseInt(endTime.split(':')[0]) * 60 + parseInt(endTime.split(':')[1]);
-    const durationMinutes = endMinutes - startMinutes;
-
-    if (durationMinutes < 30) {
+    // 開始時間の形式チェック
+    const timeRegex = /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/;
+    if (!timeRegex.test(startTime)) {
       setError({
         type: 'validation',
-        message: '授業時間は30分以上に設定してください',
-        field: 'time',
-        recoverable: true,
-      });
-      return false;
-    }
-
-    if (durationMinutes > 120) {
-      setError({
-        type: 'validation',
-        message: '授業時間は2時間以内に設定してください',
+        message: '開始時間を正しい形式（HH:MM）で入力してください',
         field: 'time',
         recoverable: true,
       });
@@ -212,28 +145,6 @@ export default function AdditionalLessonRequestScreen() {
         return;
       }
 
-      // 講師の空き時間もチェック（指定された場合）
-      if (formData.teacher_id) {
-        const { data: conflictingLessons, error: lessonCheckError } = await supabase
-          .from('lesson_slots')
-          .select('id')
-          .eq('teacher_id', formData.teacher_id)
-          .eq('slot_date', formData.requested_date)
-          .gte('end_time', formData.requested_start_time)
-          .lte('start_time', formData.requested_end_time)
-          .neq('status', '欠席');
-
-        if (lessonCheckError) throw lessonCheckError;
-
-        if (conflictingLessons && conflictingLessons.length > 0) {
-          setError({
-            type: 'conflict',
-            message: '指定した講師は該当時間帯に他の授業があります',
-            recoverable: true,
-          });
-          return;
-        }
-      }
 
       const { data, error: submitError } = await supabase
         .from('additional_lesson_requests')
@@ -242,7 +153,7 @@ export default function AdditionalLessonRequestScreen() {
           requested_date: formData.requested_date,
           requested_start_time: formData.requested_start_time,
           requested_end_time: formData.requested_end_time,
-          teacher_id: formData.teacher_id || null,
+          teacher_id: null,
           notes: formData.notes?.trim() || null,
           request_timestamp: new Date().toISOString(),
           status: '申請中',
@@ -287,7 +198,7 @@ export default function AdditionalLessonRequestScreen() {
     
     Alert.alert(
       '追加授業申請の確認',
-      `以下の内容で追加授業を申請します。\n\n日時: ${dateStr} ${formData.requested_start_time}-${formData.requested_end_time}\n講師: ${selectedTeacher?.name || '指定なし'}\n備考: ${formData.notes || 'なし'}\n\nよろしいですか？`,
+      `以下の内容で追加授業を申請します。\n\n日時: ${dateStr} ${formData.requested_start_time}-${formData.requested_end_time}\n授業タイプ: ${formData.lesson_type}\n備考: ${formData.notes || 'なし'}\n\nよろしいですか？`,
       [
         {
           text: 'キャンセル',
@@ -301,26 +212,53 @@ export default function AdditionalLessonRequestScreen() {
     );
   };
 
-  // 時間選択の処理
-  const handleTimeSlotSelect = (timeSlot: string) => {
-    const [start, end] = timeSlot.split('-');
-    setFormData(prev => ({
-      ...prev,
-      requested_start_time: start,
-      requested_end_time: end,
-    }));
+  // 授業時間変更時の処理
+  const handleDurationChange = (duration: number) => {
+    setLessonDuration(duration);
+    
+    // 開始時間から終了時間を自動計算
+    const startTime = formData.requested_start_time;
+    if (startTime && /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(startTime)) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+      const endMinutes = startMinutes + duration;
+      
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+      
+      setFormData(prev => ({
+        ...prev,
+        requested_end_time: endTime,
+      }));
+    }
+  };
+
+  // 開始時間変更時の処理
+  const handleStartTimeChange = (startTime: string) => {
+    setFormData(prev => ({ ...prev, requested_start_time: startTime }));
+    
+    // 開始時間が有効な場合、終了時間を自動計算
+    if (/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(startTime)) {
+      const [hours, minutes] = startTime.split(':').map(Number);
+      const startMinutes = hours * 60 + minutes;
+      const endMinutes = startMinutes + lessonDuration;
+      
+      const endHours = Math.floor(endMinutes / 60);
+      const endMins = endMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMins).padStart(2, '0')}`;
+      
+      setFormData(prev => ({
+        ...prev,
+        requested_end_time: endTime,
+      }));
+    }
   };
 
   // 初期データ取得
   useEffect(() => {
-    const initialize = async () => {
-      setLoading(true);
-      await fetchTeachers();
-      setLoading(false);
-    };
-
-    initialize();
-  }, [fetchTeachers]);
+    setLoading(false);
+  }, []);
 
   // ローディング表示
   if (loading) {
@@ -328,7 +266,7 @@ export default function AdditionalLessonRequestScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#3B82F6" />
-          <Text style={styles.loadingText}>講師情報を読み込み中...</Text>
+          <Text style={styles.loadingText}>読み込み中...</Text>
         </View>
       </SafeAreaView>
     );
@@ -336,17 +274,11 @@ export default function AdditionalLessonRequestScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* ヘッダー */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.headerBackButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.headerBackText}>‹ 戻る</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>追加授業申請</Text>
-        <View style={{ width: 60 }} />
-      </View>
+      <AppHeader 
+        title="追加授業申請" 
+        showBackButton={true}
+        onBackPress={() => router.back()}
+      />
 
       <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
         {/* 日付選択 */}
@@ -372,64 +304,51 @@ export default function AdditionalLessonRequestScreen() {
           <Text style={styles.formLabel}>
             希望時間 <Text style={styles.required}>*</Text>
           </Text>
-          <View style={styles.timeSlotGrid}>
-            {timeSlotOptions.map((slot) => {
-              const isSelected = `${formData.requested_start_time}-${formData.requested_end_time}` === slot.value;
-              return (
-                <TouchableOpacity
-                  key={slot.value}
-                  style={[
-                    styles.timeSlotButton,
-                    isSelected && styles.timeSlotButtonSelected,
-                    !slot.isAvailable && styles.timeSlotButtonDisabled,
-                  ]}
-                  onPress={() => slot.isAvailable && handleTimeSlotSelect(slot.value)}
-                  disabled={!slot.isAvailable}
-                >
-                  <Text style={[
-                    styles.timeSlotButtonText,
-                    isSelected && styles.timeSlotButtonTextSelected,
-                    !slot.isAvailable && styles.timeSlotButtonTextDisabled,
-                  ]}>
-                    {slot.label}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
+          
+          {/* 開始時間入力 */}
+          <View style={styles.timeInputSection}>
+            <Text style={styles.timeInputSectionLabel}>開始時間</Text>
+            <TextInput
+              style={styles.startTimeInput}
+              value={formData.requested_start_time}
+              onChangeText={(text) => {
+                handleStartTimeChange(text);
+                if (error?.field === 'time') setError(null);
+              }}
+              placeholder="16:00"
+              keyboardType="numeric"
+            />
+            <Text style={styles.timeInputHelper}>例: 16:00</Text>
           </View>
           
-          {/* カスタム時間入力 */}
-          <View style={styles.customTimeContainer}>
-            <Text style={styles.customTimeLabel}>または時間を直接入力:</Text>
-            <View style={styles.customTimeInputs}>
-              <View style={styles.timeInputContainer}>
-                <Text style={styles.timeInputLabel}>開始</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={formData.requested_start_time}
-                  onChangeText={(text) => {
-                    setFormData(prev => ({ ...prev, requested_start_time: text }));
-                    if (error?.field === 'time') setError(null);
-                  }}
-                  placeholder="15:00"
-                  keyboardType="numeric"
-                />
-              </View>
-              <Text style={styles.timeSeparator}>〜</Text>
-              <View style={styles.timeInputContainer}>
-                <Text style={styles.timeInputLabel}>終了</Text>
-                <TextInput
-                  style={styles.timeInput}
-                  value={formData.requested_end_time}
-                  onChangeText={(text) => {
-                    setFormData(prev => ({ ...prev, requested_end_time: text }));
-                    if (error?.field === 'time') setError(null);
-                  }}
-                  placeholder="16:00"
-                  keyboardType="numeric"
-                />
-              </View>
+          {/* 授業時間選択 */}
+          <View style={styles.durationSection}>
+            <Text style={styles.timeInputSectionLabel}>授業時間</Text>
+            <View style={styles.durationButtons}>
+              {durationOptions.map((option) => (
+                <TouchableOpacity
+                  key={option.value}
+                  style={[
+                    styles.durationButton,
+                    lessonDuration === option.value && styles.durationButtonSelected,
+                  ]}
+                  onPress={() => handleDurationChange(option.value)}
+                >
+                  <Text style={[
+                    styles.durationButtonText,
+                    lessonDuration === option.value && styles.durationButtonTextSelected,
+                  ]}>
+                    {option.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
+          </View>
+          
+          {/* 終了時間表示 */}
+          <View style={styles.endTimeDisplay}>
+            <Text style={styles.endTimeLabel}>終了時間: </Text>
+            <Text style={styles.endTimeValue}>{formData.requested_end_time}</Text>
           </View>
         </View>
 
@@ -477,49 +396,6 @@ export default function AdditionalLessonRequestScreen() {
           </View>
         </View>
 
-        {/* 講師選択 */}
-        <View style={styles.formSection}>
-          <Text style={styles.formLabel}>
-            希望講師（任意）
-          </Text>
-          <View style={styles.teacherList}>
-            <TouchableOpacity
-              style={[
-                styles.teacherOption,
-                !formData.teacher_id && styles.teacherOptionSelected,
-              ]}
-              onPress={() => setFormData(prev => ({ ...prev, teacher_id: '' }))}
-            >
-              <View style={styles.teacherInfo}>
-                <Text style={styles.teacherName}>指定なし</Text>
-                <Text style={styles.teacherRole}>運営が最適な講師を選定します</Text>
-              </View>
-            </TouchableOpacity>
-            
-            {teachers.map((teacher) => (
-              <TouchableOpacity
-                key={teacher.id}
-                style={[
-                  styles.teacherOption,
-                  formData.teacher_id === teacher.id && styles.teacherOptionSelected,
-                ]}
-                onPress={() => setFormData(prev => ({ ...prev, teacher_id: teacher.id }))}
-              >
-                <View style={styles.teacherInfo}>
-                  <Text style={styles.teacherName}>{teacher.name}</Text>
-                  <Text style={styles.teacherRole}>
-                    {teacher.specialties?.join('・')} {teacher.isAssigned && '（担当講師）'}
-                  </Text>
-                </View>
-                {teacher.isAssigned && (
-                  <View style={styles.assignedBadge}>
-                    <Text style={styles.assignedBadgeText}>担当</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-        </View>
 
         {/* 備考 */}
         <View style={styles.formSection}>
@@ -575,8 +451,8 @@ export default function AdditionalLessonRequestScreen() {
           </View>
           <Text style={styles.noticeText}>
             • 申請は明日以降1ヶ月以内の日程で受け付けます{'\n'}
+            • 担当講師と時間について合意の上ご申請をお願いします{'\n'}
             • 承認後にカレンダーに授業が追加されます{'\n'}
-            • 講師の都合により希望日時を調整する場合があります{'\n'}
             • 申請後の内容変更は運営までご連絡ください
           </Text>
         </View>
@@ -613,37 +489,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F9FAFB',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-    ...Platform.select({
-      ios: {
-        paddingTop: 0,
-      },
-      android: {
-        paddingTop: 8,
-      },
-    }),
-  },
-  headerBackButton: {
-    padding: 8,
-  },
-  headerBackText: {
-    fontSize: 16,
-    color: '#3B82F6',
-    fontWeight: '500',
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#111827',
   },
   content: {
     flex: 1,
@@ -699,77 +544,76 @@ const styles = StyleSheet.create({
   dateButtonIconContainer: {
     marginLeft: 8,
   },
-  timeSlotGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginBottom: 16,
+  timeInputSection: {
+    marginBottom: 20,
   },
-  timeSlotButton: {
-    flexBasis: '48%',
+  timeInputSectionLabel: {
+    fontSize: 14,
+    color: '#374151',
+    fontWeight: '500',
+    marginBottom: 8,
+  },
+  startTimeInput: {
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+    borderRadius: 8,
+    padding: 12,
+    fontSize: 16,
+    textAlign: 'center',
+    backgroundColor: '#FFFFFF',
+  },
+  timeInputHelper: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  durationSection: {
+    marginBottom: 20,
+  },
+  durationButtons: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  durationButton: {
+    flex: 1,
     borderWidth: 1,
     borderColor: '#D1D5DB',
     borderRadius: 8,
     padding: 12,
     alignItems: 'center',
-    position: 'relative',
   },
-  timeSlotButtonSelected: {
+  durationButtonSelected: {
     borderColor: '#3B82F6',
     backgroundColor: '#EBF8FF',
   },
-  timeSlotButtonDisabled: {
-    backgroundColor: '#F3F4F6',
-    borderColor: '#E5E7EB',
-  },
-  timeSlotButtonText: {
+  durationButtonText: {
     fontSize: 14,
     color: '#374151',
     fontWeight: '500',
   },
-  timeSlotButtonTextSelected: {
+  durationButtonTextSelected: {
     color: '#1D4ED8',
     fontWeight: '600',
   },
-  timeSlotButtonTextDisabled: {
-    color: '#9CA3AF',
-  },
-  customTimeContainer: {
-    marginTop: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E5E7EB',
-    paddingTop: 16,
-  },
-  customTimeLabel: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  customTimeInputs: {
+  endTimeDisplay: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 12,
-  },
-  timeInputContainer: {
-    flex: 1,
-  },
-  timeInputLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    marginBottom: 4,
-  },
-  timeInput: {
+    justifyContent: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 12,
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 6,
-    padding: 10,
-    fontSize: 16,
-    textAlign: 'center',
+    borderColor: '#E2E8F0',
   },
-  timeSeparator: {
-    fontSize: 16,
+  endTimeLabel: {
+    fontSize: 14,
     color: '#6B7280',
-    fontWeight: '500',
+  },
+  endTimeValue: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#1E293B',
   },
   lessonTypeOptions: {
     flexDirection: 'row',

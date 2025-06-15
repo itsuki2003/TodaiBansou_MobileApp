@@ -21,6 +21,8 @@ import {
 import { router } from 'expo-router';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNotification } from '@/contexts/NotificationContext';
+import AppHeader from '@/components/ui/AppHeader';
 
 interface RecentNotification {
   id: string;
@@ -31,9 +33,9 @@ interface RecentNotification {
 }
 
 export default function SettingsScreen() {
-  const { students, selectedStudent, selectStudent, clearStudentSelection, signOut, user } = useAuth();
+  const { students, selectedStudent, selectStudent, signOut, user } = useAuth();
+  const { unreadCount, dbNotifications } = useNotification();
   const [recentNotifications, setRecentNotifications] = useState<RecentNotification[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
   
   // AsyncStorage key for read notifications
   const getReadNotificationsKey = (userId: string) => `read_notifications_${userId}`;
@@ -66,7 +68,6 @@ export default function SettingsScreen() {
             notif.id === notificationId ? { ...notif, read: true } : notif
           )
         );
-        setUnreadCount(prev => Math.max(0, prev - 1));
       }
     } catch (error) {
       // エラーハンドリング: 通知の既読マークエラーは無視
@@ -106,7 +107,6 @@ export default function SettingsScreen() {
       })) || [];
 
       setRecentNotifications(formattedNotifications);
-      setUnreadCount(formattedNotifications.filter(n => !n.read).length);
     } catch (err) {
       // エラーハンドリング: 通知取得エラーは無視
     }
@@ -124,7 +124,7 @@ export default function SettingsScreen() {
   
   const handleProfile = () => {
     // Navigate to profile screen
-    router.push('/profile' as any);
+    router.push('/profile');
   };
 
   const handleStudentSwitch = () => {
@@ -133,30 +133,13 @@ export default function SettingsScreen() {
     }
   };
 
-  const handleClearSelection = () => {
-    Alert.alert(
-      '生徒選択をリセット',
-      '保存された生徒選択をクリアして、次回ログイン時に選択画面を表示しますか？',
-      [
-        { text: 'キャンセル', style: 'cancel' },
-        { 
-          text: 'リセット', 
-          style: 'destructive',
-          onPress: () => {
-            clearStudentSelection();
-            Alert.alert('完了', '生徒選択がリセットされました。');
-          }
-        }
-      ]
-    );
-  };
   
   const handleTerms = () => {
-    router.push('/terms-of-service' as any);
+    router.push('/(tabs)/terms-of-service');
   };
   
   const handlePrivacy = () => {
-    router.push('/privacy-policy' as any);
+    router.push('/(tabs)/privacy-policy');
   };
   
   const handleLogout = () => {
@@ -188,10 +171,7 @@ export default function SettingsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.logo}>東大伴走</Text>
-        <Text style={styles.title}>設定</Text>
-      </View>
+      <AppHeader title="設定" />
       
       <ScrollView style={styles.content}>
         <View style={styles.section}>
@@ -240,18 +220,6 @@ export default function SettingsScreen() {
             </TouchableOpacity>
           )}
 
-          {students.length > 1 && (
-            <TouchableOpacity 
-              style={styles.menuItem}
-              onPress={handleClearSelection}
-            >
-              <View style={styles.menuIconContainer}>
-                <Users size={20} color="#EF4444" />
-              </View>
-              <Text style={[styles.menuText, { color: '#EF4444' }]}>生徒選択をリセット</Text>
-              <ChevronRight size={18} color="#94A3B8" />
-            </TouchableOpacity>
-          )}
           
           <TouchableOpacity 
             style={styles.menuItem}
@@ -339,28 +307,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
-  },
-  logo: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#3B82F6',
-    position: 'absolute',
-    left: 16,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#1E293B',
   },
   content: {
     flex: 1,
